@@ -2,14 +2,17 @@
 
 I used ChatGPT during the planning phase and Claude Code during development.
 
-While I only have access to GitHub Copilot at work, I've been experimenting a
-lot with Claude Code on side-projects, for months now. I believe that style of
-development is the future, especially for greenfield code and small codebases.
-So I decided to use it heavily for this assignment. My flow generally is:
+I've been experimenting with Claude Code for months so I knew it would be
+the right tool for this task. I've fallen into many of the pitfalls while
+using Claude Code (and AI in general) so I have a pretty good flow worked
+out:
 
 1. Use Claude Code to generate the next step quickly.
-2. Iterate until functional if needed.
-2. Examine the code closely and refactor by hand or with Claude Code.
+2. Iterate until functional, if needed.
+3. Examine the code closely and refactor by hand or with Claude Code.
+
+Never let the code "get away from you". At the same time don't cleanup
+code if you aren't going to keep it.
 
 For this project I'm using branches like this:
 
