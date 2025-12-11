@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import { Sketch } from './Sketch'
 
+const GHOST_VERTEX_SIZE = 0.12
+const GHOST_VERTEX_COLOR = 0x88ff88 // Light green
+
 /**
  * Manages the 2D sketch editor viewport for creating and editing profiles
  */
@@ -17,6 +20,11 @@ export class SketchEditor {
   private draggedVertexIndex: number | null = null  // null means not dragging
   private onVertexChange: ((index: number, position: THREE.Vector2) => void) | null = null
 
+  // Ghost vertex for segment hover (add vertex preview)
+  private ghostVertex: THREE.Mesh
+  private hoveredSegmentIndex: number | null = null
+  private onVertexInsert: ((segmentIndex: number, position: THREE.Vector2) => void) | null = null
+
   constructor(container: HTMLElement) {
     this.container = container
     this.raycaster = new THREE.Raycaster()
@@ -24,6 +32,19 @@ export class SketchEditor {
     // Create scene
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color(0x2a2a2a)
+
+    // Create ghost vertex (hidden until hovering a segment)
+    const ghostGeometry = new THREE.PlaneGeometry(GHOST_VERTEX_SIZE, GHOST_VERTEX_SIZE)
+    const ghostMaterial = new THREE.MeshBasicMaterial({
+      color: GHOST_VERTEX_COLOR,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide
+    })
+    this.ghostVertex = new THREE.Mesh(ghostGeometry, ghostMaterial)
+    this.ghostVertex.visible = false
+    this.ghostVertex.position.z = 0.02 // Above segments and lines
+    this.scene.add(this.ghostVertex)
 
     // Create orthographic camera for 2D view
     const aspect = container.clientWidth / container.clientHeight
@@ -80,7 +101,7 @@ export class SketchEditor {
   }
 
   /**
-   * Handle mouse down - start dragging if clicking on a vertex
+   * Handle mouse down - start dragging if clicking on a vertex, or insert if clicking on a segment
    */
   private onMouseDown(event: MouseEvent): void {
     if (!this.currentSketch) return
@@ -88,21 +109,46 @@ export class SketchEditor {
     const ndc = this.getMouseNDC(event)
     this.raycaster.setFromCamera(ndc, this.camera)
 
+    // First check vertices (they have priority)
     const vertexMeshes = this.currentSketch.getVertexMeshes()
-    const intersects = this.raycaster.intersectObjects(vertexMeshes)
+    const vertexIntersects = this.raycaster.intersectObjects(vertexMeshes)
 
-    if (intersects.length > 0) {
-      const mesh = intersects[0].object as THREE.Mesh
+    if (vertexIntersects.length > 0) {
+      const mesh = vertexIntersects[0].object as THREE.Mesh
       const index = this.currentSketch.getVertexIndex(mesh)
       if (index !== null) {
         this.draggedVertexIndex = index
         this.container.style.cursor = 'grabbing'
       }
+      return
     }
+
+    // Check if clicking on a segment to insert a vertex
+    this.tryInsertVertex(event)
   }
 
   /**
-   * Handle mouse move - update vertex position if dragging
+   * Try to insert a vertex at the hovered segment position
+   */
+  private tryInsertVertex(event: MouseEvent): void {
+    if (!this.currentSketch || this.hoveredSegmentIndex === null) return
+
+    const worldPos = this.getWorldPosition(event)
+    const vertices = this.currentSketch.getVertices()
+    const start = vertices[this.hoveredSegmentIndex]
+    const end = vertices[(this.hoveredSegmentIndex + 1) % vertices.length]
+    const insertPos = this.closestPointOnSegment(worldPos, start, end)
+
+    if (this.onVertexInsert) {
+      this.onVertexInsert(this.hoveredSegmentIndex, insertPos)
+    }
+
+    this.ghostVertex.visible = false
+    this.hoveredSegmentIndex = null
+  }
+
+  /**
+   * Handle mouse move - update vertex position if dragging, or show ghost vertex on segment hover
    */
   private onMouseMove(event: MouseEvent): void {
     if (!this.currentSketch) return
@@ -115,16 +161,78 @@ export class SketchEditor {
       if (this.onVertexChange) {
         this.onVertexChange(this.draggedVertexIndex, worldPos)
       }
-    } else {
-      // Update cursor when hovering over vertices
-      const ndc = this.getMouseNDC(event)
-      this.raycaster.setFromCamera(ndc, this.camera)
-
-      const vertexMeshes = this.currentSketch.getVertexMeshes()
-      const intersects = this.raycaster.intersectObjects(vertexMeshes)
-
-      this.container.style.cursor = intersects.length > 0 ? 'grab' : 'default'
+      return
     }
+
+    const ndc = this.getMouseNDC(event)
+    this.raycaster.setFromCamera(ndc, this.camera)
+
+    // First check vertices (they have priority)
+    const vertexMeshes = this.currentSketch.getVertexMeshes()
+    const vertexIntersects = this.raycaster.intersectObjects(vertexMeshes)
+
+    if (vertexIntersects.length > 0) {
+      // Hovering over a vertex - hide ghost, show grab cursor
+      this.ghostVertex.visible = false
+      this.hoveredSegmentIndex = null
+      this.container.style.cursor = 'grab'
+      return
+    }
+
+    // Check segments for ghost vertex display
+    if (this.updateGhostVertex(event)) {
+      return
+    }
+
+    // Not hovering anything interactive
+    this.ghostVertex.visible = false
+    this.hoveredSegmentIndex = null
+    this.container.style.cursor = 'default'
+  }
+
+  /**
+   * Update ghost vertex position if hovering a segment. Returns true if hovering.
+   */
+  private updateGhostVertex(event: MouseEvent): boolean {
+    if (!this.currentSketch) return false
+
+    const segmentMeshes = this.currentSketch.getSegmentHitMeshes()
+    const segmentIntersects = this.raycaster.intersectObjects(segmentMeshes)
+
+    if (segmentIntersects.length === 0) return false
+
+    const mesh = segmentIntersects[0].object as THREE.Mesh
+    const segmentIndex = this.currentSketch.getSegmentIndex(mesh)
+    if (segmentIndex === null) return false
+
+    // Get the closest point on the segment to the cursor
+    const worldPos = this.getWorldPosition(event)
+    const vertices = this.currentSketch.getVertices()
+    const start = vertices[segmentIndex]
+    const end = vertices[(segmentIndex + 1) % vertices.length]
+    const closestPoint = this.closestPointOnSegment(worldPos, start, end)
+
+    // Show ghost vertex at the closest point
+    this.ghostVertex.position.set(closestPoint.x, closestPoint.y, 0.02)
+    this.ghostVertex.visible = true
+    this.hoveredSegmentIndex = segmentIndex
+    this.container.style.cursor = 'crosshair'
+    return true
+  }
+
+  /**
+   * Calculate the closest point on a line segment to a given point
+   */
+  private closestPointOnSegment(point: THREE.Vector2, start: THREE.Vector2, end: THREE.Vector2): THREE.Vector2 {
+    const seg = new THREE.Vector2().subVectors(end, start)
+    const len2 = seg.lengthSq()
+    if (len2 === 0) return start.clone()
+
+    const t = Math.max(0, Math.min(1, new THREE.Vector2().subVectors(point, start).dot(seg) / len2))
+    return new THREE.Vector2(
+      start.x + t * seg.x,
+      start.y + t * seg.y
+    )
   }
 
   /**
@@ -140,6 +248,13 @@ export class SketchEditor {
    */
   setOnVertexChange(callback: (index: number, position: THREE.Vector2) => void): void {
     this.onVertexChange = callback
+  }
+
+  /**
+   * Set callback for when a new vertex is inserted on a segment
+   */
+  setOnVertexInsert(callback: (segmentIndex: number, position: THREE.Vector2) => void): void {
+    this.onVertexInsert = callback
   }
 
   /**

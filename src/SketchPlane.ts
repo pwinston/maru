@@ -117,6 +117,14 @@ export class SketchPlane {
   }
 
   /**
+   * Insert a new vertex on a segment
+   */
+  insertVertex(segmentIndex: number, position: THREE.Vector2): void {
+    this.sketch.insertVertex(segmentIndex, position)
+    this.rebuildPlaneMesh()
+  }
+
+  /**
    * Update all vertices and refresh the visualization
    */
   setVertices(vertices: THREE.Vector2[]): void {
