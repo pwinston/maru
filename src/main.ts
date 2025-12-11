@@ -1,14 +1,16 @@
 import './style.css'
-import { Viewport3D } from './Viewport3D'
-import { SketchEditor } from './SketchEditor'
-import { SketchPlane } from './SketchPlane'
-import { PlaneSelector } from './PlaneSelector'
+import { Viewport3D } from './3d/Viewport3D'
+import { PlaneSelector } from './3d/PlaneSelector'
+import { SketchEditor } from './2d/SketchEditor'
+import { SketchPlane } from './3d/SketchPlane'
+import { HelpBar } from './util/HelpBar'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="viewport-3d"></div>
   <div id="viewport-2d"></div>
 `
+
 
 // Get container elements.
 const container3d = document.querySelector<HTMLDivElement>('#viewport-3d')!
@@ -63,6 +65,22 @@ sketchEditor.setOnVertexDelete((index) => {
 
 // Select the first plane by default
 planeSelector.selectPlane(sketchPlanes[0])
+
+// Create help bars for each viewport
+new HelpBar([
+  { key: 'Scroll', action: 'Zoom' },
+  { key: 'Right-drag', action: 'Pan' },
+  { key: 'Left-drag', action: 'Orbit' },
+  { key: 'Drag plane', action: 'Adjust height' },
+  { key: 'Drag ground', action: 'Add floor' },
+  { key: 'Drag down', action: 'Delete floor' },
+]).appendTo(container3d)
+
+new HelpBar([
+  { key: 'Scroll', action: 'Zoom' },
+  { key: 'Right-drag', action: 'Pan' },
+  { key: 'Double-click', action: 'Delete vertex' },
+]).appendTo(container2d)
 
 // Resize handler
 window.addEventListener('resize', () => {

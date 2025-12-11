@@ -1,14 +1,15 @@
 import * as THREE from 'three'
-import { Sketch } from './Sketch'
+import { Sketch } from '../2d/Sketch'
 
 const BORDER_PERCENT = 0.05 // 5% border around sketch
 
-export type PlaneVisualState = 'default' | 'hovered' | 'selected'
+export type PlaneVisualState = 'default' | 'hovered' | 'selected' | 'deleting'
 
 const PLANE_STYLES: Record<PlaneVisualState, { color: number; opacity: number }> = {
   default:  { color: 0x444444, opacity: 0.2 },
   hovered:  { color: 0xddaa00, opacity: 0.3 },
   selected: { color: 0x666666, opacity: 0.4 },
+  deleting: { color: 0xff0000, opacity: 0.5 },
 }
 
 /**
@@ -106,6 +107,14 @@ export class SketchPlane {
    */
   getHeight(): number {
     return this.height
+  }
+
+  /**
+   * Set the height (Y position) of this plane
+   */
+  setHeight(height: number): void {
+    this.height = height
+    this.planeGroup.position.y = height
   }
 
   /**

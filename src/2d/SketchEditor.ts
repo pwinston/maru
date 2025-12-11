@@ -1,8 +1,10 @@
 import * as THREE from 'three'
 import { Sketch } from './Sketch'
+import { wouldCauseSelfIntersection } from '../util/Geometry'
 
 const GHOST_VERTEX_SIZE = 0.12
 const GHOST_VERTEX_COLOR = 0x88ff88 // Light green
+const DELETE_VERTEX_COLOR = 0xff0000 // Red for deletion
 
 /**
  * Manages the 2D sketch editor viewport for creating and editing profiles
@@ -26,6 +28,14 @@ export class SketchEditor {
   private onVertexInsert: ((segmentIndex: number, position: THREE.Vector2) => void) | null = null
   private onVertexDelete: ((index: number) => void) | null = null
 
+  // Panning state
+  private isPanning: boolean = false
+  private lastPanPosition: THREE.Vector2 | null = null
+
+  // Vertex deletion state (during drag)
+  private isDeletingVertex: boolean = false
+  private deletePreviewMarker: THREE.Mesh
+
   constructor(container: HTMLElement) {
     this.container = container
     this.raycaster = new THREE.Raycaster()
@@ -46,6 +56,19 @@ export class SketchEditor {
     this.ghostVertex.visible = false
     this.ghostVertex.position.z = 0.02 // Above segments and lines
     this.scene.add(this.ghostVertex)
+
+    // Create delete preview marker (shown when dragging vertex causes self-intersection)
+    const deleteGeometry = new THREE.PlaneGeometry(GHOST_VERTEX_SIZE, GHOST_VERTEX_SIZE)
+    const deleteMaterial = new THREE.MeshBasicMaterial({
+      color: DELETE_VERTEX_COLOR,
+      transparent: true,
+      opacity: 0.8,
+      side: THREE.DoubleSide
+    })
+    this.deletePreviewMarker = new THREE.Mesh(deleteGeometry, deleteMaterial)
+    this.deletePreviewMarker.visible = false
+    this.deletePreviewMarker.position.z = 0.03 // Above everything
+    this.scene.add(this.deletePreviewMarker)
 
     // Create orthographic camera for 2D view
     const aspect = container.clientWidth / container.clientHeight
@@ -76,10 +99,11 @@ export class SketchEditor {
 
     canvas.addEventListener('mousedown', (e) => this.onMouseDown(e))
     canvas.addEventListener('mousemove', (e) => this.onMouseMove(e))
-    canvas.addEventListener('mouseup', () => this.onMouseUp())
-    canvas.addEventListener('mouseleave', () => this.onMouseUp())
+    canvas.addEventListener('mouseup', (e) => this.onMouseUp(e))
+    canvas.addEventListener('mouseleave', (e) => this.onMouseUp(e))
     canvas.addEventListener('dblclick', (e) => this.onDoubleClick(e))
     canvas.addEventListener('wheel', (e) => this.onWheel(e))
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault())
   }
 
   /**
@@ -107,6 +131,14 @@ export class SketchEditor {
    * Handle mouse down - start dragging if clicking on a vertex, or insert if clicking on a segment
    */
   private onMouseDown(event: MouseEvent): void {
+    // Right-click starts panning
+    if (event.button === 2) {
+      this.isPanning = true
+      this.lastPanPosition = new THREE.Vector2(event.clientX, event.clientY)
+      this.container.style.cursor = 'move'
+      return
+    }
+
     if (!this.currentSketch) return
 
     const ndc = this.getMouseNDC(event)
@@ -121,6 +153,7 @@ export class SketchEditor {
       const index = this.currentSketch.getVertexIndex(mesh)
       if (index !== null) {
         this.draggedVertexIndex = index
+        this.isDeletingVertex = false  // Reset delete state
         this.container.style.cursor = 'grabbing'
       }
       return
@@ -159,18 +192,61 @@ export class SketchEditor {
   }
 
   /**
+   * Handle panning. Returns true if panning is active.
+   */
+  private updatePan(event: MouseEvent): boolean {
+    if (!this.isPanning || !this.lastPanPosition) return false
+
+    const deltaX = event.clientX - this.lastPanPosition.x
+    const deltaY = event.clientY - this.lastPanPosition.y
+
+    // Convert pixel delta to world units
+    const worldUnitsPerPixelX = (this.camera.right - this.camera.left) / this.container.clientWidth
+    const worldUnitsPerPixelY = (this.camera.top - this.camera.bottom) / this.container.clientHeight
+
+    this.camera.position.x -= deltaX * worldUnitsPerPixelX
+    this.camera.position.y += deltaY * worldUnitsPerPixelY
+
+    this.lastPanPosition.set(event.clientX, event.clientY)
+    return true
+  }
+
+  /**
    * Handle mouse move - update vertex position if dragging, or show ghost vertex on segment hover
    */
   private onMouseMove(event: MouseEvent): void {
+    if (this.updatePan(event)) return
+
     if (!this.currentSketch) return
 
     if (this.draggedVertexIndex !== null) {
-      // Update vertex position while dragging
       const worldPos = this.getWorldPosition(event)
+      const vertices = this.currentSketch.getVertices()
+      const canDelete = vertices.length > 3
 
-      // Notify owner to update the vertex (owner is responsible for calling sketch.setVertex)
-      if (this.onVertexChange) {
-        this.onVertexChange(this.draggedVertexIndex, worldPos)
+      // Check if this position would cause self-intersection
+      const causesIntersection = wouldCauseSelfIntersection(
+        vertices, this.draggedVertexIndex, worldPos
+      )
+
+      if (causesIntersection && canDelete) {
+        // Mark vertex for deletion - show preview without this vertex
+        this.isDeletingVertex = true
+        this.currentSketch.rebuildWithoutVertex(this.draggedVertexIndex)
+        this.deletePreviewMarker.position.set(worldPos.x, worldPos.y, 0.03)
+        this.deletePreviewMarker.visible = true
+      } else {
+        // Normal drag - restore full sketch if we were in delete mode
+        if (this.isDeletingVertex) {
+          this.currentSketch.restoreFullRebuild()
+        }
+        this.isDeletingVertex = false
+        this.deletePreviewMarker.visible = false
+
+        // Notify owner to update the vertex
+        if (this.onVertexChange) {
+          this.onVertexChange(this.draggedVertexIndex, worldPos)
+        }
       }
       return
     }
@@ -247,10 +323,27 @@ export class SketchEditor {
   }
 
   /**
-   * Handle mouse up - stop dragging
+   * Handle mouse up - stop dragging or panning, delete vertex if in delete mode
    */
-  private onMouseUp(): void {
+  private onMouseUp(event: MouseEvent): void {
+    if (event.button === 2) {
+      this.isPanning = false
+      this.lastPanPosition = null
+      this.container.style.cursor = 'default'
+      return
+    }
+
+    // Handle vertex deletion if we were in delete mode
+    if (this.draggedVertexIndex !== null && this.isDeletingVertex) {
+      if (this.onVertexDelete) {
+        this.onVertexDelete(this.draggedVertexIndex)
+      }
+    }
+
+    // Clean up drag state
     this.draggedVertexIndex = null
+    this.isDeletingVertex = false
+    this.deletePreviewMarker.visible = false
     this.container.style.cursor = 'default'
   }
 

@@ -38,7 +38,7 @@ export class Viewport3D {
     // Add orbit controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = true
-    this.controls.dampingFactor = 0.05
+    this.controls.dampingFactor = 0.15
     this.controls.target.set(0, 1, 0)
     this.controls.update()
 
@@ -106,18 +106,51 @@ export class Viewport3D {
   }
 
   /**
+   * Enable or disable orbit controls
+   */
+  setOrbitEnabled(enabled: boolean): void {
+    this.controls.enabled = enabled
+  }
+
+  /**
    * Perform raycasting to find intersected objects
    */
   raycast(event: MouseEvent, objects: THREE.Object3D[]): THREE.Intersection[] {
-    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    this.updateMouseNDC(event)
+    this.raycaster.setFromCamera(this.mouse, this.camera)
+    return this.raycaster.intersectObjects(objects, true)
+  }
+
+  /**
+   * Get the world Y coordinate where the mouse ray intersects a vertical plane facing the camera
+   */
+  getWorldYAtMouse(event: MouseEvent): number | null {
+    this.updateMouseNDC(event)
+    this.raycaster.setFromCamera(this.mouse, this.camera)
+
+    // Create a vertical plane facing the camera (perpendicular to camera's XZ direction)
+    // Use camera's forward direction projected onto XZ plane as the plane normal
+    const cameraDir = new THREE.Vector3()
+    this.camera.getWorldDirection(cameraDir)
+    cameraDir.y = 0 // Project onto XZ plane
+    cameraDir.normalize()
+
+    // Plane passes through origin, facing camera
+    const plane = new THREE.Plane(cameraDir, 0)
+    const intersection = new THREE.Vector3()
+
+    if (this.raycaster.ray.intersectPlane(plane, intersection)) {
+      return intersection.y
+    }
+    return null
+  }
+
+  /**
+   * Update mouse NDC from event
+   */
+  private updateMouseNDC(event: MouseEvent): void {
     const rect = this.container.getBoundingClientRect()
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-
-    // Update the picking ray with the camera and mouse position
-    this.raycaster.setFromCamera(this.mouse, this.camera)
-
-    // Calculate objects intersecting the picking ray
-    return this.raycaster.intersectObjects(objects, true)
   }
 }
