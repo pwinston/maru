@@ -52,6 +52,15 @@ export class SketchEditor {
   }
 
   /**
+   * Clear all objects from the scene
+   */
+  clear(): void {
+    while(this.scene.children.length > 0) {
+      this.scene.remove(this.scene.children[0])
+    }
+  }
+
+  /**
    * Add an object to the 2D scene
    */
   add(object: THREE.Object3D): void {
