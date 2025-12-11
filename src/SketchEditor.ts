@@ -14,8 +14,7 @@ export class SketchEditor {
 
   // Dragging state
   private raycaster: THREE.Raycaster
-  private isDragging: boolean = false
-  private draggedVertexIndex: number | null = null
+  private draggedVertexIndex: number | null = null  // null means not dragging
   private onVertexChange: ((index: number, position: THREE.Vector2) => void) | null = null
 
   constructor(container: HTMLElement) {
@@ -96,7 +95,6 @@ export class SketchEditor {
       const mesh = intersects[0].object as THREE.Mesh
       const index = this.currentSketch.getVertexIndex(mesh)
       if (index !== null) {
-        this.isDragging = true
         this.draggedVertexIndex = index
         this.container.style.cursor = 'grabbing'
       }
@@ -109,7 +107,7 @@ export class SketchEditor {
   private onMouseMove(event: MouseEvent): void {
     if (!this.currentSketch) return
 
-    if (this.isDragging && this.draggedVertexIndex !== null) {
+    if (this.draggedVertexIndex !== null) {
       // Update vertex position while dragging
       const worldPos = this.getWorldPosition(event)
 
@@ -133,7 +131,6 @@ export class SketchEditor {
    * Handle mouse up - stop dragging
    */
   private onMouseUp(): void {
-    this.isDragging = false
     this.draggedVertexIndex = null
     this.container.style.cursor = 'default'
   }
