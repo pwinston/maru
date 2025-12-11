@@ -125,6 +125,15 @@ export class SketchPlane {
   }
 
   /**
+   * Delete a vertex
+   */
+  deleteVertex(index: number): boolean {
+    const result = this.sketch.deleteVertex(index)
+    if (result) this.rebuildPlaneMesh()
+    return result
+  }
+
+  /**
    * Update all vertices and refresh the visualization
    */
   setVertices(vertices: THREE.Vector2[]): void {

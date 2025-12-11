@@ -166,6 +166,17 @@ export class Sketch {
   }
 
   /**
+   * Delete a vertex (must have at least 3 vertices to remain a valid polygon)
+   */
+  deleteVertex(index: number): boolean {
+    if (this.vertices.length <= 3) return false
+    if (index < 0 || index >= this.vertices.length) return false
+    this.vertices.splice(index, 1)
+    this.rebuild()
+    return true
+  }
+
+  /**
    * Update a single vertex position
    */
   setVertex(index: number, position: THREE.Vector2): void {

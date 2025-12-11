@@ -53,6 +53,14 @@ sketchEditor.setOnVertexInsert((segmentIndex, position) => {
   }
 })
 
+// Delete vertex on double-click in 2D editor
+sketchEditor.setOnVertexDelete((index) => {
+  const selectedPlane = planeSelector.getSelectedPlane()
+  if (selectedPlane) {
+    selectedPlane.deleteVertex(index)
+  }
+})
+
 // Select the first plane by default
 planeSelector.selectPlane(sketchPlanes[0])
 

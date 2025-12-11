@@ -24,6 +24,7 @@ export class SketchEditor {
   private ghostVertex: THREE.Mesh
   private hoveredSegmentIndex: number | null = null
   private onVertexInsert: ((segmentIndex: number, position: THREE.Vector2) => void) | null = null
+  private onVertexDelete: ((index: number) => void) | null = null
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -77,6 +78,8 @@ export class SketchEditor {
     canvas.addEventListener('mousemove', (e) => this.onMouseMove(e))
     canvas.addEventListener('mouseup', () => this.onMouseUp())
     canvas.addEventListener('mouseleave', () => this.onMouseUp())
+    canvas.addEventListener('dblclick', (e) => this.onDoubleClick(e))
+    canvas.addEventListener('wheel', (e) => this.onWheel(e))
   }
 
   /**
@@ -128,7 +131,8 @@ export class SketchEditor {
   }
 
   /**
-   * Try to insert a vertex at the hovered segment position
+   * Try to insert a vertex at the hovered segment position.
+   * If successful, immediately start dragging the new vertex.
    */
   private tryInsertVertex(event: MouseEvent): void {
     if (!this.currentSketch || this.hoveredSegmentIndex === null) return
@@ -139,9 +143,16 @@ export class SketchEditor {
     const end = vertices[(this.hoveredSegmentIndex + 1) % vertices.length]
     const insertPos = this.closestPointOnSegment(worldPos, start, end)
 
+    // The new vertex will be inserted at segmentIndex + 1
+    const newVertexIndex = this.hoveredSegmentIndex + 1
+
     if (this.onVertexInsert) {
       this.onVertexInsert(this.hoveredSegmentIndex, insertPos)
     }
+
+    // Start dragging the newly inserted vertex
+    this.draggedVertexIndex = newVertexIndex
+    this.container.style.cursor = 'grabbing'
 
     this.ghostVertex.visible = false
     this.hoveredSegmentIndex = null
@@ -244,6 +255,45 @@ export class SketchEditor {
   }
 
   /**
+   * Handle double-click - delete vertex if clicking on one
+   */
+  private onDoubleClick(event: MouseEvent): void {
+    if (!this.currentSketch) return
+
+    const ndc = this.getMouseNDC(event)
+    this.raycaster.setFromCamera(ndc, this.camera)
+
+    const vertexMeshes = this.currentSketch.getVertexMeshes()
+    const intersects = this.raycaster.intersectObjects(vertexMeshes)
+
+    if (intersects.length > 0) {
+      const mesh = intersects[0].object as THREE.Mesh
+      const index = this.currentSketch.getVertexIndex(mesh)
+      if (index !== null && this.onVertexDelete) {
+        this.onVertexDelete(index)
+      }
+    }
+  }
+
+  /**
+   * Handle mouse wheel - zoom in/out
+   */
+  private onWheel(event: WheelEvent): void {
+    event.preventDefault()
+
+    const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9
+    this.frustumSize *= zoomFactor
+    this.frustumSize = Math.max(2, Math.min(50, this.frustumSize)) // Clamp zoom
+
+    const aspect = this.container.clientWidth / this.container.clientHeight
+    this.camera.left = -this.frustumSize * aspect / 2
+    this.camera.right = this.frustumSize * aspect / 2
+    this.camera.top = this.frustumSize / 2
+    this.camera.bottom = -this.frustumSize / 2
+    this.camera.updateProjectionMatrix()
+  }
+
+  /**
    * Set callback for when a vertex position changes
    */
   setOnVertexChange(callback: (index: number, position: THREE.Vector2) => void): void {
@@ -255,6 +305,13 @@ export class SketchEditor {
    */
   setOnVertexInsert(callback: (segmentIndex: number, position: THREE.Vector2) => void): void {
     this.onVertexInsert = callback
+  }
+
+  /**
+   * Set callback for when a vertex is deleted (double-click)
+   */
+  setOnVertexDelete(callback: (index: number) => void): void {
+    this.onVertexDelete = callback
   }
 
   /**
