@@ -64,3 +64,14 @@ shapes.
 Show the sketch planes and the lofted shape in 3D, but create and edit sketches
 in 2D with a normal top-down 2D view.  Editing the sketches while the plane is
 at a 3D angle would be a lot harder without really adding much value.
+
+## Implementation
+
+3D Viewport:
+    Viewport3D.ts - the 3D scene with orbit controls
+    PlaceSelector.ts - Handles hover and click on planes
+    SketchPlane.ts - 3D plane, renders the 2D sketch
+
+2D Sketch Editor:
+    SketchEditor.ts - mouse controls to drag vertexes around
+    Sketch.ts - the 2D sketch itself: vertices and lines
