@@ -4,6 +4,8 @@ import { Bounds } from './Bounds'
 const VERTEX_SIZE = 0.15
 const VERTEX_COLOR = 0xffff00
 const LINE_COLOR = 0x00ff00
+const SEGMENT_HIT_WIDTH = 0.3 // Width of invisible hit area for segments
+const VERTEX_SAFE_ZONE = 0.25 // Distance from vertex where segment hit is disabled
 
 /**
  * Represents a 2D sketch. A polygon made up of lines and vertices.
@@ -14,6 +16,7 @@ export class Sketch {
   private editorGroup: THREE.Group
   private line: THREE.Line | null = null
   private vertexMeshes: THREE.Mesh[] = []
+  private segmentHitMeshes: THREE.Mesh[] = []
 
   constructor(vertices: THREE.Vector2[]) {
     this.vertices = vertices.map(v => v.clone())
@@ -31,6 +34,7 @@ export class Sketch {
     this.lineGroup.clear()
     this.editorGroup.clear()
     this.vertexMeshes = []
+    this.segmentHitMeshes = []
 
     // Create the polygon outline (for 3D view)
     this.line = this.createLine()
@@ -38,12 +42,46 @@ export class Sketch {
 
     // Create editor visuals (line + control points for 2D view)
     this.editorGroup.add(this.createLine())
+
+    // Create invisible segment hit areas (for click detection)
+    for (let i = 0; i < this.vertices.length; i++) {
+      const nextIndex = (i + 1) % this.vertices.length
+      const segmentMesh = this.createSegmentHitMesh(this.vertices[i], this.vertices[nextIndex], i)
+      this.segmentHitMeshes.push(segmentMesh)
+      this.editorGroup.add(segmentMesh)
+    }
+
+    // Create vertex control points (on top of segments)
     for (let i = 0; i < this.vertices.length; i++) {
       const mesh = this.createVertexMesh(this.vertices[i])
       mesh.userData.vertexIndex = i
       this.vertexMeshes.push(mesh)
       this.editorGroup.add(mesh)
     }
+  }
+
+  /**
+   * Create an invisible hit area for a line segment (with safe zones near vertices)
+   */
+  private createSegmentHitMesh(start: THREE.Vector2, end: THREE.Vector2, segmentIndex: number): THREE.Mesh {
+    const dir = new THREE.Vector2().subVectors(end, start)
+    const fullLength = dir.length()
+    const angle = Math.atan2(dir.y, dir.x)
+
+    // Shrink the hit area by safe zone on each end
+    const hitLength = Math.max(0, fullLength - 2 * VERTEX_SAFE_ZONE)
+    const center = new THREE.Vector2().addVectors(start, end).multiplyScalar(0.5)
+
+    const geometry = new THREE.PlaneGeometry(hitLength, SEGMENT_HIT_WIDTH)
+    const material = new THREE.MeshBasicMaterial({
+      visible: false, // Invisible but still raycastable
+      side: THREE.DoubleSide
+    })
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.set(center.x, center.y, 0.005) // Between line and vertices
+    mesh.rotation.z = angle
+    mesh.userData.segmentIndex = segmentIndex
+    return mesh
   }
 
   /**
@@ -98,6 +136,44 @@ export class Sketch {
    */
   getVertexMeshes(): THREE.Mesh[] {
     return this.vertexMeshes
+  }
+
+  /**
+   * Get the segment hit meshes for raycasting/picking
+   */
+  getSegmentHitMeshes(): THREE.Mesh[] {
+    return this.segmentHitMeshes
+  }
+
+  /**
+   * Get segment index from a mesh (for raycasting results)
+   */
+  getSegmentIndex(mesh: THREE.Mesh): number | null {
+    const index = mesh.userData.segmentIndex
+    return typeof index === 'number' ? index : null
+  }
+
+  /**
+   * Insert a vertex on a segment, splitting it into two
+   * @param segmentIndex The index of the segment (same as start vertex index)
+   * @param position The position of the new vertex
+   */
+  insertVertex(segmentIndex: number, position: THREE.Vector2): void {
+    if (segmentIndex < 0 || segmentIndex >= this.vertices.length) return
+    // Insert after segmentIndex (which is the start of the segment)
+    this.vertices.splice(segmentIndex + 1, 0, position.clone())
+    this.rebuild()
+  }
+
+  /**
+   * Delete a vertex (must have at least 3 vertices to remain a valid polygon)
+   */
+  deleteVertex(index: number): boolean {
+    if (this.vertices.length <= 3) return false
+    if (index < 0 || index >= this.vertices.length) return false
+    this.vertices.splice(index, 1)
+    this.rebuild()
+    return true
   }
 
   /**

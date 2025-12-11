@@ -45,6 +45,22 @@ sketchEditor.setOnVertexChange((index, position) => {
   }
 })
 
+// Insert vertex when clicking on a segment in 2D editor
+sketchEditor.setOnVertexInsert((segmentIndex, position) => {
+  const selectedPlane = planeSelector.getSelectedPlane()
+  if (selectedPlane) {
+    selectedPlane.insertVertex(segmentIndex, position)
+  }
+})
+
+// Delete vertex on double-click in 2D editor
+sketchEditor.setOnVertexDelete((index) => {
+  const selectedPlane = planeSelector.getSelectedPlane()
+  if (selectedPlane) {
+    selectedPlane.deleteVertex(index)
+  }
+})
+
 // Select the first plane by default
 planeSelector.selectPlane(sketchPlanes[0])
 

@@ -117,6 +117,23 @@ export class SketchPlane {
   }
 
   /**
+   * Insert a new vertex on a segment
+   */
+  insertVertex(segmentIndex: number, position: THREE.Vector2): void {
+    this.sketch.insertVertex(segmentIndex, position)
+    this.rebuildPlaneMesh()
+  }
+
+  /**
+   * Delete a vertex
+   */
+  deleteVertex(index: number): boolean {
+    const result = this.sketch.deleteVertex(index)
+    if (result) this.rebuildPlaneMesh()
+    return result
+  }
+
+  /**
    * Update all vertices and refresh the visualization
    */
   setVertices(vertices: THREE.Vector2[]): void {
