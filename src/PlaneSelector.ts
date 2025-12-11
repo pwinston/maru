@@ -2,7 +2,9 @@ import { Viewport3D } from './Viewport3D'
 import { SketchPlane } from './SketchPlane'
 
 /**
- * Handles mouse interaction for selecting sketch planes in the 3D viewport
+ * PlaneSelector
+ * 
+ * Handles hovering over and clicking to select SketchPlanes.
  */
 export class PlaneSelector {
   private viewport3d: Viewport3D
