@@ -67,11 +67,11 @@ at a 3D angle would be a lot harder without really adding much value.
 
 ## Implementation
 
-3D Viewport:
-    Viewport3D.ts - the 3D scene with orbit controls
-    PlaceSelector.ts - Handles hover and click on planes
-    SketchPlane.ts - 3D plane, renders the 2D sketch
+### 3D Viewport
+- **Viewport3D.ts** – the 3D scene with orbit controls  
+- **PlaceSelector.ts** – handles hover and click on planes  
+- **SketchPlane.ts** – 3D plane, renders the 2D sketch  
 
-2D Sketch Editor:
-    SketchEditor.ts - mouse controls to drag vertexes around
-    Sketch.ts - the 2D sketch itself: vertices and lines
+### 2D Sketch Editor
+- **SketchEditor.ts** – mouse controls to drag vertices around  
+- **Sketch.ts** – the 2D sketch: vertices and lines  
