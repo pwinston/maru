@@ -1,60 +1,62 @@
 import './style.css'
 import * as THREE from 'three'
+import { Viewport3D } from './Viewport3D'
+import { SketchEditor } from './SketchEditor'
 
+// Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <h1>Hello Three.js!</h1>
-    <p>A rotating 3D cube</p>
-    <div id="canvas-container"></div>
-  </div>
+  <div id="viewport-3d"></div>
+  <div id="viewport-2d"></div>
 `
 
-// Set canvas dimensions
-const canvasWidth = 1280
-const canvasHeight = 1024
+// Get container elements
+const viewport3dContainer = document.querySelector<HTMLDivElement>('#viewport-3d')!
+const viewport2dContainer = document.querySelector<HTMLDivElement>('#viewport-2d')!
 
-// Create scene
-const scene = new THREE.Scene()
-scene.background = new THREE.Color(0x1a1a1a)
+// Create viewports
+const viewport3d = new Viewport3D(viewport3dContainer)
+const sketchEditor = new SketchEditor(viewport2dContainer)
 
-// Create camera
-const camera = new THREE.PerspectiveCamera(
-  75,
-  canvasWidth / canvasHeight,
-  0.1,
-  1000
-)
-camera.position.z = 5
+// === DEMO CONTENT ===
 
-// Create renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true })
-renderer.setSize(canvasWidth, canvasHeight)
-document.querySelector('#canvas-container')!.appendChild(renderer.domElement)
-
-// Create cube
-const geometry = new THREE.BoxGeometry(2, 2, 2)
-const material = new THREE.MeshBasicMaterial({
-  color: 0x00ff00,
-  wireframe: true
+// Add a cube to the 3D viewport for demonstration
+const cubeGeometry = new THREE.BoxGeometry(2, 2, 2)
+const cubeMaterial = new THREE.MeshStandardMaterial({
+  color: 0x4a9eff,
+  roughness: 0.5,
+  metalness: 0.1
 })
-const cube = new THREE.Mesh(geometry, material)
-scene.add(cube)
+const cube = new THREE.Mesh(cubeGeometry, cubeMaterial)
+viewport3d.add(cube)
 
-// Animation loop
+// Add a square to the 2D sketch editor for demonstration
+const squareVertices = [
+  new THREE.Vector2(-1.5, -1.5),
+  new THREE.Vector2(1.5, -1.5),
+  new THREE.Vector2(1.5, 1.5),
+  new THREE.Vector2(-1.5, 1.5),
+]
+sketchEditor.createPolygon(squareVertices)
+
+// === ANIMATION LOOP ===
+
 function animate() {
   requestAnimationFrame(animate)
 
-  cube.rotation.x += 0.01
+  // Rotate cube slowly for demonstration
+  cube.rotation.x += 0.005
   cube.rotation.y += 0.01
 
-  renderer.render(scene, camera)
+  // Render both viewports
+  viewport3d.render()
+  sketchEditor.render()
 }
 
-// Handle window resize (optional - keeps canvas at fixed size)
-// window.addEventListener('resize', () => {
-//   camera.aspect = canvasWidth / canvasHeight
-//   camera.updateProjectionMatrix()
-//   renderer.setSize(canvasWidth, canvasHeight)
-// })
+// === WINDOW RESIZE HANDLER ===
+
+window.addEventListener('resize', () => {
+  viewport3d.resize()
+  sketchEditor.resize()
+})
 
 animate()
