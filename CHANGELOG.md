@@ -24,7 +24,14 @@ like. I added all decisions to the README.
 
 # PRs
 
-[#1](https://github.com/pwinston/maru/pull/1)Split Screen: 3D viewport on left, 2d sketch view on right
-[#2](https://github.com/pwinston/maru/pull/2)Three hard-coded planes with picking/selection
-[#3](https://github.com/pwinston/maru/pull/3)Simple sketch editing
+PR #1 - Split Screen: 3D viewport on left, 2d sketch view on right  
+![](images/01.jpg)
 
+PR #2 - Three hard-coded planes with picking/selection  
+![](images/02.jpg)
+
+PR #3 - Simple sketch editing  
+![](images/03.jpg)
+
+PR #4 - Ability to Add and Delete vertexes  
+![](images/04.jpg)
