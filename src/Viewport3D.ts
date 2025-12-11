@@ -2,9 +2,9 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 /**
- * Manages the 3D viewport for viewing lofted shapes and sketch planes
+ * The 3D Viewport displays the sketch planes and the lofted shape.
  */
-export class Viewport3D {
+export class Viewport3D { 
   private scene: THREE.Scene
   private camera: THREE.PerspectiveCamera
   private renderer: THREE.WebGLRenderer

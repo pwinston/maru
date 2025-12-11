@@ -1,12 +1,12 @@
 import * as THREE from 'three'
+import { Bounds } from './Bounds'
 
 const VERTEX_SIZE = 0.15
 const VERTEX_COLOR = 0xffff00
 const LINE_COLOR = 0x00ff00
 
 /**
- * Represents a 2D sketch polygon with vertices that can be visualized
- * and interacted with.
+ * Represents a 2D sketch. A polygon made up of lines and vertices.
  */
 export class Sketch {
   private vertices: THREE.Vector2[]
@@ -121,33 +121,8 @@ export class Sketch {
   /**
    * Calculate bounding box of the sketch
    */
-  getBounds(): { minX: number; maxX: number; minY: number; maxY: number; width: number; height: number; centerX: number; centerY: number } {
-    if (this.vertices.length === 0) {
-      return { minX: -1, maxX: 1, minY: -1, maxY: 1, width: 2, height: 2, centerX: 0, centerY: 0 }
-    }
-
-    let minX = this.vertices[0].x
-    let maxX = this.vertices[0].x
-    let minY = this.vertices[0].y
-    let maxY = this.vertices[0].y
-
-    for (const vertex of this.vertices) {
-      minX = Math.min(minX, vertex.x)
-      maxX = Math.max(maxX, vertex.x)
-      minY = Math.min(minY, vertex.y)
-      maxY = Math.max(maxY, vertex.y)
-    }
-
-    return {
-      minX,
-      maxX,
-      minY,
-      maxY,
-      width: maxX - minX,
-      height: maxY - minY,
-      centerX: (minX + maxX) / 2,
-      centerY: (minY + maxY) / 2
-    }
+  getBounds(): Bounds {
+    return Bounds.fromPoints(this.vertices)
   }
 
   /**
