@@ -2,6 +2,8 @@ import './style.css'
 import * as THREE from 'three'
 import { Viewport3D } from './Viewport3D'
 import { SketchEditor } from './SketchEditor'
+import { SketchPlane } from './SketchPlane'
+import { PlaneSelector } from './PlaneSelector'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -17,35 +19,58 @@ const viewport2dContainer = document.querySelector<HTMLDivElement>('#viewport-2d
 const viewport3d = new Viewport3D(viewport3dContainer)
 const sketchEditor = new SketchEditor(viewport2dContainer)
 
-// === DEMO CONTENT ===
+// === CREATE SKETCH PLANES ===
 
-// Add a cube to the 3D viewport for demonstration
-const cubeGeometry = new THREE.BoxGeometry(2, 2, 2)
-const cubeMaterial = new THREE.MeshStandardMaterial({
-  color: 0x4a9eff,
-  roughness: 0.5,
-  metalness: 0.1
-})
-const cube = new THREE.Mesh(cubeGeometry, cubeMaterial)
-viewport3d.add(cube)
+// Create three sketch planes at different heights (y=0, y=1, y=2)
+const plane1Vertices = [
+  new THREE.Vector2(-2, -2),
+  new THREE.Vector2(2, -2),
+  new THREE.Vector2(2, 2),
+  new THREE.Vector2(-2, 2),
+]
 
-// Add a square to the 2D sketch editor for demonstration
-const squareVertices = [
+const plane2Vertices = [
   new THREE.Vector2(-1.5, -1.5),
   new THREE.Vector2(1.5, -1.5),
   new THREE.Vector2(1.5, 1.5),
   new THREE.Vector2(-1.5, 1.5),
 ]
-sketchEditor.createPolygon(squareVertices)
+
+const plane3Vertices = [
+  new THREE.Vector2(-1, -1),
+  new THREE.Vector2(1, -1),
+  new THREE.Vector2(1, 1),
+  new THREE.Vector2(-1, 1),
+]
+
+const sketchPlanes = [
+  new SketchPlane(plane1Vertices, 0),    // Ground floor
+  new SketchPlane(plane2Vertices, 1),    // First floor
+  new SketchPlane(plane3Vertices, 2),    // Second floor
+]
+
+// Add all planes to the 3D viewport
+sketchPlanes.forEach(plane => {
+  viewport3d.add(plane.getGroup())
+})
+
+// === PLANE SELECTION ===
+
+const planeSelector = new PlaneSelector(viewport3d, sketchPlanes)
+
+// Update 2D editor when plane selection changes
+planeSelector.setOnSelectionChange((plane) => {
+  sketchEditor.clear()
+  sketchEditor.createPolygon(plane.getVertices())
+})
+
+// Select the first plane by default
+planeSelector.selectPlane(sketchPlanes[0])
 
 // === ANIMATION LOOP ===
 
 function animate() {
   requestAnimationFrame(animate)
-
-  // Rotate cube slowly for demonstration
-  cube.rotation.x += 0.005
-  cube.rotation.y += 0.01
 
   // Render both viewports
   viewport3d.render()
