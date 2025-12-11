@@ -4,6 +4,7 @@ import { Bounds } from '../util/Bounds'
 const VERTEX_SIZE = 0.15
 const VERTEX_COLOR = 0xffff00
 const LINE_COLOR = 0x00ff00
+const DELETE_VERTEX_COLOR = 0xff0000
 const SEGMENT_HIT_WIDTH = 0.3 // Width of invisible hit area for segments
 const VERTEX_SAFE_ZONE = 0.25 // Distance from vertex where segment hit is disabled
 
@@ -207,5 +208,101 @@ export class Sketch {
   getVertexIndex(mesh: THREE.Mesh): number | null {
     const index = mesh.userData.vertexIndex
     return typeof index === 'number' ? index : null
+  }
+
+  /**
+   * Get the number of vertices
+   */
+  getVertexCount(): number {
+    return this.vertices.length
+  }
+
+  /**
+   * Set the color of a specific vertex
+   */
+  setVertexColor(index: number, color: number): void {
+    if (index >= 0 && index < this.vertexMeshes.length) {
+      const material = this.vertexMeshes[index].material as THREE.MeshBasicMaterial
+      material.color.setHex(color)
+    }
+  }
+
+  /**
+   * Reset a vertex to the default color
+   */
+  resetVertexColor(index: number): void {
+    this.setVertexColor(index, VERTEX_COLOR)
+  }
+
+  /**
+   * Mark a vertex as being deleted (red color)
+   */
+  setVertexDeleting(index: number): void {
+    this.setVertexColor(index, DELETE_VERTEX_COLOR)
+  }
+
+  /**
+   * Temporarily rebuild the sketch visualization without a specific vertex.
+   * Used for preview during drag-to-delete.
+   */
+  rebuildWithoutVertex(excludeIndex: number): void {
+    if (excludeIndex < 0 || excludeIndex >= this.vertices.length) return
+    if (this.vertices.length <= 3) return
+
+    const tempVertices = this.vertices.filter((_, i) => i !== excludeIndex)
+    this.rebuildVisualsFrom(tempVertices)
+  }
+
+  /**
+   * Restore the full rebuild with all vertices
+   */
+  restoreFullRebuild(): void {
+    this.rebuild()
+  }
+
+  /**
+   * Rebuild visuals from a given vertex array (may differ from this.vertices)
+   */
+  private rebuildVisualsFrom(verts: THREE.Vector2[]): void {
+    // Clear existing visuals
+    this.lineGroup.clear()
+    this.editorGroup.clear()
+    this.vertexMeshes = []
+    this.segmentHitMeshes = []
+
+    // Create the polygon outline (for 3D view)
+    this.line = this.createLineFrom(verts)
+    this.lineGroup.add(this.line)
+
+    // Create editor visuals (line + control points for 2D view)
+    this.editorGroup.add(this.createLineFrom(verts))
+
+    // Create invisible segment hit areas (for click detection)
+    for (let i = 0; i < verts.length; i++) {
+      const nextIndex = (i + 1) % verts.length
+      const segmentMesh = this.createSegmentHitMesh(verts[i], verts[nextIndex], i)
+      this.segmentHitMeshes.push(segmentMesh)
+      this.editorGroup.add(segmentMesh)
+    }
+
+    // Create vertex control points (on top of segments)
+    for (let i = 0; i < verts.length; i++) {
+      const mesh = this.createVertexMesh(verts[i])
+      mesh.userData.vertexIndex = i
+      this.vertexMeshes.push(mesh)
+      this.editorGroup.add(mesh)
+    }
+  }
+
+  /**
+   * Create a line from arbitrary vertices
+   */
+  private createLineFrom(verts: THREE.Vector2[]): THREE.Line {
+    const points3d = verts.map(v => new THREE.Vector3(v.x, v.y, 0))
+    points3d.push(points3d[0].clone()) // Close the loop
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
+    const material = new THREE.LineBasicMaterial({ color: LINE_COLOR })
+    return new THREE.Line(geometry, material)
   }
 }

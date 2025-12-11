@@ -38,7 +38,7 @@ export class Viewport3D {
     // Add orbit controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = true
-    this.controls.dampingFactor = 0.05
+    this.controls.dampingFactor = 0.15
     this.controls.target.set(0, 1, 0)
     this.controls.update()
 
