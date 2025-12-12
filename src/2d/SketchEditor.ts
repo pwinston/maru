@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { Sketch } from './Sketch'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
+import { createGrid } from '../util/GridHelper'
 
 const GHOST_VERTEX_SIZE = 0.12
 const GHOST_VERTEX_COLOR = 0x88ff88 // Light green
@@ -44,6 +45,11 @@ export class SketchEditor {
     // Create scene
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color(0x2a2a2a)
+
+    // Add ground grid (already in XY plane)
+    const grid = createGrid()
+    grid.position.z = -0.01  // Behind everything else
+    this.scene.add(grid)
 
     // Create ghost vertex (hidden until hovering a segment)
     const ghostGeometry = new THREE.PlaneGeometry(GHOST_VERTEX_SIZE, GHOST_VERTEX_SIZE)

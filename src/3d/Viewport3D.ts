@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { createGrid } from '../util/GridHelper'
 
 /**
  * The 3D Viewport displays the sketch planes and the lofted shape.
@@ -49,6 +50,12 @@ export class Viewport3D {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
     directionalLight.position.set(5, 10, 5)
     this.scene.add(directionalLight)
+
+    // Add ground grid (rotated to XZ plane)
+    const grid = createGrid()
+    grid.rotation.x = -Math.PI / 2  // Rotate from XY to XZ plane
+    grid.position.y = 0  // On ground level
+    this.scene.add(grid)
   }
 
   /**
