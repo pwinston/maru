@@ -1,10 +1,8 @@
 import * as THREE from 'three'
 import { Sketch } from './Sketch'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
-
-const GHOST_VERTEX_SIZE = 0.12
-const GHOST_VERTEX_COLOR = 0x88ff88 // Light green
-const DELETE_VERTEX_COLOR = 0xff0000 // Red for deletion
+import { createGrid } from '../util/GridHelper'
+import { GRID, VIEWPORT_2D, SKETCH } from '../constants'
 
 /**
  * Manages the 2D sketch editor viewport for creating and editing profiles
@@ -14,7 +12,7 @@ export class SketchEditor {
   private camera: THREE.OrthographicCamera
   private renderer: THREE.WebGLRenderer
   private container: HTMLElement
-  private frustumSize: number = 10
+  private frustumSize: number = VIEWPORT_2D.FRUSTUM_SIZE
   private currentSketch: Sketch | null = null
 
   // Dragging state
@@ -36,18 +34,24 @@ export class SketchEditor {
   private isDeletingVertex: boolean = false
   private deletePreviewMarker: THREE.Mesh
 
+
   constructor(container: HTMLElement) {
     this.container = container
     this.raycaster = new THREE.Raycaster()
 
     // Create scene
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x2a2a2a)
+    this.scene.background = new THREE.Color(VIEWPORT_2D.BACKGROUND_COLOR)
+
+    // Add ground grid (already in XY plane)
+    const grid = createGrid(GRID.SPACING_2D)
+    grid.position.z = -0.01  // Behind everything else
+    this.scene.add(grid)
 
     // Create ghost vertex (hidden until hovering a segment)
-    const ghostGeometry = new THREE.PlaneGeometry(GHOST_VERTEX_SIZE, GHOST_VERTEX_SIZE)
+    const ghostGeometry = new THREE.PlaneGeometry(SKETCH.GHOST_VERTEX_SIZE, SKETCH.GHOST_VERTEX_SIZE)
     const ghostMaterial = new THREE.MeshBasicMaterial({
-      color: GHOST_VERTEX_COLOR,
+      color: SKETCH.GHOST_VERTEX_COLOR,
       transparent: true,
       opacity: 0.6,
       side: THREE.DoubleSide
@@ -58,9 +62,9 @@ export class SketchEditor {
     this.scene.add(this.ghostVertex)
 
     // Create delete preview marker (shown when dragging vertex causes self-intersection)
-    const deleteGeometry = new THREE.PlaneGeometry(GHOST_VERTEX_SIZE, GHOST_VERTEX_SIZE)
+    const deleteGeometry = new THREE.PlaneGeometry(SKETCH.GHOST_VERTEX_SIZE, SKETCH.GHOST_VERTEX_SIZE)
     const deleteMaterial = new THREE.MeshBasicMaterial({
-      color: DELETE_VERTEX_COLOR,
+      color: SKETCH.DELETE_COLOR,
       transparent: true,
       opacity: 0.8,
       side: THREE.DoubleSide
@@ -118,12 +122,28 @@ export class SketchEditor {
   }
 
   /**
-   * Convert mouse position to world coordinates
+   * Rotate a 2D point by an angle around the origin
+   */
+  private rotatePoint(x: number, y: number, angle: number): THREE.Vector2 {
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    return new THREE.Vector2(x * cos - y * sin, x * sin + y * cos)
+  }
+
+  /**
+   * Convert mouse position to world coordinates, accounting for scene rotation
    */
   private getWorldPosition(event: MouseEvent): THREE.Vector2 {
     const ndc = this.getMouseNDC(event)
     const worldX = ndc.x * (this.camera.right - this.camera.left) / 2 + this.camera.position.x
     const worldY = ndc.y * (this.camera.top - this.camera.bottom) / 2 + this.camera.position.y
+
+    // If scene is rotated, transform back to sketch-local coordinates
+    const rotation = this.scene.rotation.z
+    if (rotation !== 0) {
+      return this.rotatePoint(worldX, worldY, -rotation)
+    }
+
     return new THREE.Vector2(worldX, worldY)
   }
 
@@ -469,5 +489,18 @@ export class SketchEditor {
    */
   getScene(): THREE.Scene {
     return this.scene
+  }
+
+  /**
+   * Set the rotation of the 2D sketch view to match the 3D camera orientation.
+   * When enabled, the sketch rotates so "closest to camera" is at the bottom.
+   * @param azimuth The camera azimuth angle in radians (0 = looking from +Z)
+   */
+  setRotation(azimuth: number): void {
+    // Rotate the scene so that the direction facing the camera is "down" (toward viewer)
+    // The sketch plane in 3D is rotated -90° around X, so sketch +Y maps to world -Z
+    // When camera is at azimuth 0 (+Z), sketch +Y faces camera, so no rotation needed
+    // As camera rotates, we rotate the 2D view to match
+    this.scene.rotation.z = -azimuth
   }
 }

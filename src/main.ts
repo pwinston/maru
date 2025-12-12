@@ -3,8 +3,9 @@ import { Viewport3D } from './3d/Viewport3D'
 import { PlaneSelector } from './3d/PlaneSelector'
 import { SketchEditor } from './2d/SketchEditor'
 import { SketchPlane } from './3d/SketchPlane'
-import { HelpBar } from './util/HelpBar'
+import { HelpPanel } from './util/HelpPanel'
 import { Loft, type RenderMode } from './3d/Loft'
+import { DEFAULT_BUILDING_SIZE } from './constants'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -21,11 +22,9 @@ const container2d = document.querySelector<HTMLDivElement>('#viewport-2d')!
 const viewport3d = new Viewport3D(container3d)
 const sketchEditor = new SketchEditor(container2d)
 
-// Default planes.
+// Default planes - just the ground floor to start
 const sketchPlanes = [
-  new SketchPlane(4, 0),    // Ground floor
-  new SketchPlane(3, 1),    // First floor
-  new SketchPlane(2, 2),    // Second floor
+  new SketchPlane(DEFAULT_BUILDING_SIZE, 0),    // Ground floor
 ]
 
 // Add planes to the 3D viewport.
@@ -94,13 +93,13 @@ sketchEditor.setOnVertexDelete((index) => {
 // Select the first plane by default
 planeSelector.selectPlane(sketchPlanes[0])
 
-// Create help bars for each viewport
-new HelpBar([
+// Create help panels for each viewport
+new HelpPanel([
   { key: 'Scroll', action: 'Zoom' },
   { key: 'Right-drag', action: 'Pan' },
   { key: 'Left-drag', action: 'Orbit' },
   { key: 'Drag plane', action: 'Adjust height' },
-  { key: 'Drag ground', action: 'Add floor' },
+  { key: 'Shift-drag', action: 'Copy floor' },
   { key: 'Drag down', action: 'Delete floor' },
 ]).appendTo(container3d)
 
@@ -108,10 +107,10 @@ new HelpBar([
 const renderToolbar = document.createElement('div')
 renderToolbar.className = 'render-toolbar'
 renderToolbar.innerHTML = `
-  <button data-mode="none">None</button>
+  <button data-mode="none" class="active">None</button>
   <button data-mode="solid">Solid</button>
   <button data-mode="wire">Wire</button>
-  <button data-mode="both" class="active">Both</button>
+  <button data-mode="both">Both</button>
 `
 container3d.appendChild(renderToolbar)
 
@@ -129,8 +128,9 @@ function setRenderMode(mode: RenderMode): void {
   renderToolbar.querySelector(`button[data-mode="${mode}"]`)?.classList.add('active')
 }
 
-// Initially hide profiles since we start in 'both' mode
-updateProfileVisibility('both')
+// Start in 'none' mode since we only have 1 plane (no loft)
+loft.setRenderMode('none')
+updateProfileVisibility('none')
 
 // Handle render mode button clicks
 renderToolbar.addEventListener('click', (e) => {
@@ -146,8 +146,8 @@ function newModel(): void {
   // Remove all existing planes from 3D viewport
   sketchPlanes.forEach(plane => viewport3d.remove(plane.getGroup()))
 
-  // Create a single plane with 1x1 square at ground level
-  const newPlane = new SketchPlane(1, 0)
+  // Create a single plane with default building size at ground level
+  const newPlane = new SketchPlane(DEFAULT_BUILDING_SIZE, 0)
   const newPlanes = [newPlane]
 
   // Add to 3D viewport
@@ -185,11 +185,37 @@ actionToolbar.addEventListener('click', (e) => {
   }
 })
 
-new HelpBar([
+new HelpPanel([
   { key: 'Scroll', action: 'Zoom' },
   { key: 'Right-drag', action: 'Pan' },
   { key: 'Double-click', action: 'Delete vertex' },
 ]).appendTo(container2d)
+
+// Create orientation toolbar for 2D viewport
+const orientationToolbar = document.createElement('div')
+orientationToolbar.className = 'orientation-toolbar'
+orientationToolbar.innerHTML = `
+  <button data-mode="fixed" class="active">Fixed</button>
+  <button data-mode="rotate">Rotate</button>
+`
+container2d.appendChild(orientationToolbar)
+
+// Orientation mode state
+let orientationMode: 'fixed' | 'rotate' = 'fixed'
+
+// Handle orientation toolbar button clicks
+orientationToolbar.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement
+  if (target.tagName === 'BUTTON') {
+    orientationMode = target.dataset.mode as 'fixed' | 'rotate'
+    orientationToolbar.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
+    target.classList.add('active')
+    // Reset rotation when switching to fixed
+    if (orientationMode === 'fixed') {
+      sketchEditor.setRotation(0)
+    }
+  }
+})
 
 // Resize handler
 window.addEventListener('resize', () => {
@@ -200,6 +226,11 @@ window.addEventListener('resize', () => {
 // Animation loop
 function animate() {
   requestAnimationFrame(animate)
+
+  // Update 2D sketch rotation if in rotate mode
+  if (orientationMode === 'rotate') {
+    sketchEditor.setRotation(viewport3d.getCameraAzimuth())
+  }
 
   // Render both viewports
   viewport3d.render()

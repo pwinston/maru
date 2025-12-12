@@ -1,10 +1,12 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { createGrid } from '../util/GridHelper'
+import { GRID, VIEWPORT_3D, LIGHTING } from '../constants'
 
 /**
  * The 3D Viewport displays the sketch planes and the lofted shape.
  */
-export class Viewport3D { 
+export class Viewport3D {
   private scene: THREE.Scene
   private camera: THREE.PerspectiveCamera
   private renderer: THREE.WebGLRenderer
@@ -18,17 +20,25 @@ export class Viewport3D {
 
     // Create scene
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x1a1a1a)
+    this.scene.background = new THREE.Color(VIEWPORT_3D.BACKGROUND_COLOR)
 
     // Create camera - positioned to view building from an angle
     this.camera = new THREE.PerspectiveCamera(
-      50,
+      VIEWPORT_3D.CAMERA_FOV,
       container.clientWidth / container.clientHeight,
       0.1,
       1000
     )
-    this.camera.position.set(8, 6, 8)
-    this.camera.lookAt(0, 1, 0)
+    this.camera.position.set(
+      VIEWPORT_3D.CAMERA_POSITION.x,
+      VIEWPORT_3D.CAMERA_POSITION.y,
+      VIEWPORT_3D.CAMERA_POSITION.z
+    )
+    this.camera.lookAt(
+      VIEWPORT_3D.CAMERA_TARGET.x,
+      VIEWPORT_3D.CAMERA_TARGET.y,
+      VIEWPORT_3D.CAMERA_TARGET.z
+    )
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -38,17 +48,31 @@ export class Viewport3D {
     // Add orbit controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = true
-    this.controls.dampingFactor = 0.15
-    this.controls.target.set(0, 1, 0)
+    this.controls.dampingFactor = VIEWPORT_3D.DAMPING_FACTOR
+    this.controls.target.set(
+      VIEWPORT_3D.CAMERA_TARGET.x,
+      VIEWPORT_3D.CAMERA_TARGET.y,
+      VIEWPORT_3D.CAMERA_TARGET.z
+    )
     this.controls.update()
 
     // Add lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
+    const ambientLight = new THREE.AmbientLight(0xffffff, LIGHTING.AMBIENT_INTENSITY)
     this.scene.add(ambientLight)
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-    directionalLight.position.set(5, 10, 5)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, LIGHTING.DIRECTIONAL_INTENSITY)
+    directionalLight.position.set(
+      LIGHTING.DIRECTIONAL_POSITION.x,
+      LIGHTING.DIRECTIONAL_POSITION.y,
+      LIGHTING.DIRECTIONAL_POSITION.z
+    )
     this.scene.add(directionalLight)
+
+    // Add ground grid (rotated to XZ plane)
+    const grid = createGrid(GRID.SPACING_3D)
+    grid.rotation.x = -Math.PI / 2  // Rotate from XY to XZ plane
+    grid.position.y = 0  // On ground level
+    this.scene.add(grid)
   }
 
   /**
@@ -152,5 +176,17 @@ export class Viewport3D {
     const rect = this.container.getBoundingClientRect()
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  }
+
+  /**
+   * Get the camera's azimuth angle (horizontal rotation around Y axis).
+   * Returns angle in radians where 0 = looking from +Z toward origin.
+   */
+  getCameraAzimuth(): number {
+    const cameraPos = this.camera.position.clone()
+    const target = this.controls.target.clone()
+    const delta = cameraPos.sub(target)
+    // atan2(x, z) gives angle from +Z axis
+    return Math.atan2(delta.x, delta.z)
   }
 }

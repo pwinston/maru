@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { SketchPlane } from './SketchPlane'
+import { LOFT } from '../constants'
 
 export type RenderMode = 'solid' | 'wire' | 'both' | 'none'
 
@@ -88,7 +89,7 @@ export class Loft {
 
     // Create solid mesh
     const material = new THREE.MeshStandardMaterial({
-      color: 0x4488cc,
+      color: LOFT.SOLID_COLOR,
       side: THREE.DoubleSide,
       flatShading: false,
     })
@@ -97,7 +98,7 @@ export class Loft {
 
     // Create wireframe
     const wireGeometry = new THREE.WireframeGeometry(geometry)
-    const wireMaterial = new THREE.LineBasicMaterial({ color: 0x000000 })
+    const wireMaterial = new THREE.LineBasicMaterial({ color: LOFT.WIRE_COLOR })
     this.wireframe = new THREE.LineSegments(wireGeometry, wireMaterial)
     this.group.add(this.wireframe)
 

@@ -61,3 +61,10 @@ like. I added all decisions to the README.
 1. For now same number of vertices on all sketch
 2. Option bar: None, Solid, Wireframe, Both
 ![](images/06.jpg)
+
+### 2D Sketch rotates, new help pane, grid, cleanup ([PR #6](https://github.com/pwinston/maru/pull/7))  
+* New grid, axes
+* Optionally rotate the 2D sketch as you orbit in 3D
+* Much more readable "help panel" to replace old "help bar"
+* Major cleanup of magic numbers into new `constants.ts` file
+![](images/07.jpg)

@@ -1,12 +1,6 @@
 import * as THREE from 'three'
 import { Bounds } from '../util/Bounds'
-
-const VERTEX_SIZE = 0.15
-const VERTEX_COLOR = 0xffff00
-const LINE_COLOR = 0x00ff00
-const DELETE_VERTEX_COLOR = 0xff0000
-const SEGMENT_HIT_WIDTH = 0.3 // Width of invisible hit area for segments
-const VERTEX_SAFE_ZONE = 0.25 // Distance from vertex where segment hit is disabled
+import { SKETCH } from '../constants'
 
 /**
  * Represents a 2D sketch. A polygon made up of lines and vertices.
@@ -70,10 +64,10 @@ export class Sketch {
     const angle = Math.atan2(dir.y, dir.x)
 
     // Shrink the hit area by safe zone on each end
-    const hitLength = Math.max(0, fullLength - 2 * VERTEX_SAFE_ZONE)
+    const hitLength = Math.max(0, fullLength - 2 * SKETCH.VERTEX_SAFE_ZONE)
     const center = new THREE.Vector2().addVectors(start, end).multiplyScalar(0.5)
 
-    const geometry = new THREE.PlaneGeometry(hitLength, SEGMENT_HIT_WIDTH)
+    const geometry = new THREE.PlaneGeometry(hitLength, SKETCH.SEGMENT_HIT_WIDTH)
     const material = new THREE.MeshBasicMaterial({
       visible: false, // Invisible but still raycastable
       side: THREE.DoubleSide
@@ -93,7 +87,7 @@ export class Sketch {
     points3d.push(points3d[0].clone()) // Close the loop
 
     const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
-    const material = new THREE.LineBasicMaterial({ color: LINE_COLOR })
+    const material = new THREE.LineBasicMaterial({ color: SKETCH.LINE_COLOR })
     return new THREE.Line(geometry, material)
   }
 
@@ -101,9 +95,9 @@ export class Sketch {
    * Create a control point mesh at a vertex position
    */
   private createVertexMesh(position: THREE.Vector2): THREE.Mesh {
-    const geometry = new THREE.PlaneGeometry(VERTEX_SIZE, VERTEX_SIZE)
+    const geometry = new THREE.PlaneGeometry(SKETCH.VERTEX_SIZE, SKETCH.VERTEX_SIZE)
     const material = new THREE.MeshBasicMaterial({
-      color: VERTEX_COLOR,
+      color: SKETCH.VERTEX_COLOR,
       side: THREE.DoubleSide
     })
     const mesh = new THREE.Mesh(geometry, material)
@@ -231,14 +225,14 @@ export class Sketch {
    * Reset a vertex to the default color
    */
   resetVertexColor(index: number): void {
-    this.setVertexColor(index, VERTEX_COLOR)
+    this.setVertexColor(index, SKETCH.VERTEX_COLOR)
   }
 
   /**
    * Mark a vertex as being deleted (red color)
    */
   setVertexDeleting(index: number): void {
-    this.setVertexColor(index, DELETE_VERTEX_COLOR)
+    this.setVertexColor(index, SKETCH.DELETE_COLOR)
   }
 
   /**
@@ -302,7 +296,7 @@ export class Sketch {
     points3d.push(points3d[0].clone()) // Close the loop
 
     const geometry = new THREE.BufferGeometry().setFromPoints(points3d)
-    const material = new THREE.LineBasicMaterial({ color: LINE_COLOR })
+    const material = new THREE.LineBasicMaterial({ color: SKETCH.LINE_COLOR })
     return new THREE.Line(geometry, material)
   }
 }

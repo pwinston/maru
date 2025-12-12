@@ -1,16 +1,8 @@
 import * as THREE from 'three'
 import { Sketch } from '../2d/Sketch'
-
-const BORDER_PERCENT = 0.15 // 15% border around sketch
+import { PLANE } from '../constants'
 
 export type PlaneVisualState = 'default' | 'hovered' | 'selected' | 'deleting'
-
-const PLANE_STYLES: Record<PlaneVisualState, { color: number; opacity: number }> = {
-  default:  { color: 0x444444, opacity: 0.2 },
-  hovered:  { color: 0xddaa00, opacity: 0.3 },
-  selected: { color: 0x666666, opacity: 0.4 },
-  deleting: { color: 0xff0000, opacity: 0.5 },
-}
 
 /**
  * Represents a 2D sketch plane in 3D space.
@@ -47,14 +39,15 @@ export class SketchPlane {
   private createPlaneMesh(): THREE.Mesh {
     const bounds = this.sketch.getBounds()
 
-    const width = bounds.width * (1 + 2 * BORDER_PERCENT)
-    const height = bounds.height * (1 + 2 * BORDER_PERCENT)
+    const width = bounds.width * (1 + 2 * PLANE.BORDER_PERCENT)
+    const height = bounds.height * (1 + 2 * PLANE.BORDER_PERCENT)
 
     const geometry = new THREE.PlaneGeometry(width, height)
+    const defaultStyle = PLANE.STYLES.default
     const material = new THREE.MeshBasicMaterial({
-      color: 0x444444,
+      color: defaultStyle.color,
       transparent: true,
-      opacity: 0.2,
+      opacity: defaultStyle.opacity,
       side: THREE.DoubleSide
     })
 
@@ -154,7 +147,7 @@ export class SketchPlane {
    * Set the visual state of this plane
    */
   setVisualState(state: PlaneVisualState): void {
-    const style = PLANE_STYLES[state]
+    const style = PLANE.STYLES[state]
     const material = this.planeMesh.material as THREE.MeshBasicMaterial
     material.color.setHex(style.color)
     material.opacity = style.opacity

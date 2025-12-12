@@ -1,6 +1,7 @@
 import { Viewport3D } from './Viewport3D'
 import { SketchPlane } from './SketchPlane'
 import { PlaneDragger } from './PlaneDragger'
+import { INTERACTION } from '../constants'
 
 /**
  * PlaneSelector
@@ -14,7 +15,6 @@ export class PlaneSelector {
   private selectedPlane: SketchPlane | null = null
   private hoveredPlane: SketchPlane | null = null
   private mouseDownPos: { x: number; y: number } | null = null
-  private clickThreshold: number = 5 // pixels
   private onSelectionChange?: (plane: SketchPlane) => void
 
   private dragger: PlaneDragger
@@ -76,7 +76,7 @@ export class PlaneSelector {
       const distance = Math.sqrt(dx * dx + dy * dy)
 
       // Only start actual drag after threshold (to distinguish from click)
-      if (distance >= this.clickThreshold) {
+      if (distance >= INTERACTION.CLICK_THRESHOLD_PX) {
         this.dragger.updateDrag(event)
       }
       return
@@ -114,7 +114,7 @@ export class PlaneSelector {
       const dy = event.clientY - this.mouseDownPos.y
       const distance = Math.sqrt(dx * dx + dy * dy)
 
-      if (distance < this.clickThreshold) {
+      if (distance < INTERACTION.CLICK_THRESHOLD_PX) {
         // Was a click, not a drag - cancel any pending drag
         this.dragger.cancelDrag()
         this.handleClick(event)
