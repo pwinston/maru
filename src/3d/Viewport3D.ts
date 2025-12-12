@@ -153,4 +153,16 @@ export class Viewport3D {
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
   }
+
+  /**
+   * Get the camera's azimuth angle (horizontal rotation around Y axis).
+   * Returns angle in radians where 0 = looking from +Z toward origin.
+   */
+  getCameraAzimuth(): number {
+    const cameraPos = this.camera.position.clone()
+    const target = this.controls.target.clone()
+    const delta = cameraPos.sub(target)
+    // atan2(x, z) gives angle from +Z axis
+    return Math.atan2(delta.x, delta.z)
+  }
 }

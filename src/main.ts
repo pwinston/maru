@@ -190,6 +190,32 @@ new HelpPanel([
   { key: 'Double-click', action: 'Delete vertex' },
 ]).appendTo(container2d)
 
+// Create orientation toolbar for 2D viewport
+const orientationToolbar = document.createElement('div')
+orientationToolbar.className = 'orientation-toolbar'
+orientationToolbar.innerHTML = `
+  <button data-mode="fixed" class="active">Fixed</button>
+  <button data-mode="rotate">Rotate</button>
+`
+container2d.appendChild(orientationToolbar)
+
+// Orientation mode state
+let orientationMode: 'fixed' | 'rotate' = 'fixed'
+
+// Handle orientation toolbar button clicks
+orientationToolbar.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement
+  if (target.tagName === 'BUTTON') {
+    orientationMode = target.dataset.mode as 'fixed' | 'rotate'
+    orientationToolbar.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
+    target.classList.add('active')
+    // Reset rotation when switching to fixed
+    if (orientationMode === 'fixed') {
+      sketchEditor.setRotation(0)
+    }
+  }
+})
+
 // Resize handler
 window.addEventListener('resize', () => {
   viewport3d.resize()
@@ -199,6 +225,11 @@ window.addEventListener('resize', () => {
 // Animation loop
 function animate() {
   requestAnimationFrame(animate)
+
+  // Update 2D sketch rotation if in rotate mode
+  if (orientationMode === 'rotate') {
+    sketchEditor.setRotation(viewport3d.getCameraAzimuth())
+  }
 
   // Render both viewports
   viewport3d.render()

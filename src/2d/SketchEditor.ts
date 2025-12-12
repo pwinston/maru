@@ -36,6 +36,7 @@ export class SketchEditor {
   private isDeletingVertex: boolean = false
   private deletePreviewMarker: THREE.Mesh
 
+
   constructor(container: HTMLElement) {
     this.container = container
     this.raycaster = new THREE.Raycaster()
@@ -118,12 +119,28 @@ export class SketchEditor {
   }
 
   /**
-   * Convert mouse position to world coordinates
+   * Rotate a 2D point by an angle around the origin
+   */
+  private rotatePoint(x: number, y: number, angle: number): THREE.Vector2 {
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    return new THREE.Vector2(x * cos - y * sin, x * sin + y * cos)
+  }
+
+  /**
+   * Convert mouse position to world coordinates, accounting for scene rotation
    */
   private getWorldPosition(event: MouseEvent): THREE.Vector2 {
     const ndc = this.getMouseNDC(event)
     const worldX = ndc.x * (this.camera.right - this.camera.left) / 2 + this.camera.position.x
     const worldY = ndc.y * (this.camera.top - this.camera.bottom) / 2 + this.camera.position.y
+
+    // If scene is rotated, transform back to sketch-local coordinates
+    const rotation = this.scene.rotation.z
+    if (rotation !== 0) {
+      return this.rotatePoint(worldX, worldY, -rotation)
+    }
+
     return new THREE.Vector2(worldX, worldY)
   }
 
@@ -469,5 +486,18 @@ export class SketchEditor {
    */
   getScene(): THREE.Scene {
     return this.scene
+  }
+
+  /**
+   * Set the rotation of the 2D sketch view to match the 3D camera orientation.
+   * When enabled, the sketch rotates so "closest to camera" is at the bottom.
+   * @param azimuth The camera azimuth angle in radians (0 = looking from +Z)
+   */
+  setRotation(azimuth: number): void {
+    // Rotate the scene so that the direction facing the camera is "down" (toward viewer)
+    // The sketch plane in 3D is rotated -90° around X, so sketch +Y maps to world -Z
+    // When camera is at azimuth 0 (+Z), sketch +Y faces camera, so no rotation needed
+    // As camera rotates, we rotate the 2D view to match
+    this.scene.rotation.z = -azimuth
   }
 }
