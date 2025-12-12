@@ -7,8 +7,8 @@ export type PlaneVisualState = 'default' | 'hovered' | 'selected' | 'deleting'
 
 const PLANE_STYLES: Record<PlaneVisualState, { color: number; opacity: number }> = {
   default:  { color: 0x444444, opacity: 0.2 },
-  hovered:  { color: 0xddaa00, opacity: 0.3 },
-  selected: { color: 0x666666, opacity: 0.4 },
+  hovered:  { color: 0x998866, opacity: 0.3 },  // gray-gold
+  selected: { color: 0xffcc00, opacity: 0.4 },  // bright gold
   deleting: { color: 0xff0000, opacity: 0.5 },
 }
 
