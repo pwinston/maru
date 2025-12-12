@@ -3,12 +3,12 @@
 I used ChatGPT during the planning phase and Claude Code during development.
 
 I've been experimenting with Claude Code for several months so I knew it would
-be the right tool for this task. I've done Claude Code wrongly enough now, I've
-learned a pretty good flow:
+be the right tool for this task. I've made enough Claude Code mistakes, or mistakes
+with AI in general, I've learned a pretty good flow:
 
 1. Use Claude Code to generate the next step quickly.
 2. Iterate until functional, if needed, make sure it works fully.
-3. Examine the code closely and refactor by hand or with Claude Code.
+3. Periodically: examine the code closely and refactor by hand or with Claude Code.
 4. Go to step 1.
 
 Also commit often so if you make a change that doesn't work out you can easily

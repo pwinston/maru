@@ -1,4 +1,4 @@
 # Claude
 
-See README.md for project overview and setup instructions.
+See README.md for project overview file descriptions.
 See CHANGELOG.md for implementation history.
