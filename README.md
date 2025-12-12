@@ -68,15 +68,15 @@ at a 3D angle would be a lot harder without really adding much value.
 ## Implementation Layout
 
 ### 3D Viewport
-- **Viewport3D.ts** – The 3D scene with orbit controls  
-- **PlaneSelector.ts** – Handles hover and click on planes  
-- **PlaneDragger.ts** - Dragging planes to create, move or delete them
-- **SketchPlane.ts** – 3D plane, renders the 2D sketch  
+- **src/3d/Viewport3D.ts** – The 3D scene with orbit controls  
+- **src/3d/PlaneSelector.ts** – Handles hover and click on planes  
+- **src/3d/PlaneDragger.ts** - Dragging planes to create, move or delete them
+- **src/3d/SketchPlane.ts** – 3D plane, renders the 2D sketch  
 
 ### 2D Viewport
-- **Sketch.ts** – The 2D sketch itself, vertices and lines  
-- **SketchEditor.ts** – Mouse controls to edit vertices
+- **src/2d/Sketch.ts** – The 2D sketch itself, vertices and lines  
+- **src/2d/SketchEditor.ts** – Mouse controls to edit vertices
 
 ### Util
-- **HelpBar.ts** – help bar at bottom of viewport
-- **Bounds.ts** - axis-aligned bounding box
+- **src/util/HelpBar.ts** – help bar at bottom of viewport
+- **src/util/Bounds.ts** - axis-aligned bounding box
