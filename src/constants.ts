@@ -35,10 +35,10 @@ export const LIGHTING = {
 
 // Sketch editor (2D vertex/segment interaction)
 export const SKETCH = {
-  VERTEX_SIZE: 0.15,
+  VERTEX_SCREEN_PX: 12,         // Target vertex size in screen pixels
   VERTEX_COLOR: 0xffff00,
   LINE_COLOR: 0x00ff00,
-  GHOST_VERTEX_SIZE: 0.12,
+  GHOST_SCREEN_PX: 10,          // Target ghost vertex size in screen pixels
   GHOST_VERTEX_COLOR: 0x88ff88,
   DELETE_COLOR: 0xff0000,
   SEGMENT_HIT_WIDTH: 0.3,
@@ -59,7 +59,9 @@ export const PLANE = {
 // Loft rendering
 export const LOFT = {
   SOLID_COLOR: 0x4488cc,
-  WIRE_COLOR: 0x000000,
+  WIRE_COLOR: 0xdddddd,  // Light gray wireframe
+  DEFAULT_ALGORITHM: 'anchor-resample' as string,
+  ANCHOR_EPSILON: 0.5,  // Max distance for anchor matching (meters)
 }
 
 // Interaction thresholds

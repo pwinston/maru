@@ -15,7 +15,8 @@ export class PlaneSelector {
   private selectedPlane: SketchPlane | null = null
   private hoveredPlane: SketchPlane | null = null
   private mouseDownPos: { x: number; y: number } | null = null
-  private onSelectionChange?: (plane: SketchPlane) => void
+  private onSelectionChange?: (plane: SketchPlane | null) => void
+  private enabled = true
 
   private dragger: PlaneDragger
 
@@ -49,9 +50,23 @@ export class PlaneSelector {
   }
 
   /**
+   * Enable or disable plane selection and interaction
+   */
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled
+    // Clear hover state when disabled
+    if (!enabled && this.hoveredPlane) {
+      const state = this.hoveredPlane === this.selectedPlane ? 'selected' : 'default'
+      this.hoveredPlane.setVisualState(state)
+      this.hoveredPlane = null
+    }
+  }
+
+  /**
    * Track mouse down position and start dragging if on a plane
    */
   private handleMouseDown(event: MouseEvent): void {
+    if (!this.enabled) return
     if (event.button !== 0) return // Only left click
 
     this.mouseDownPos = { x: event.clientX, y: event.clientY }
@@ -69,6 +84,8 @@ export class PlaneSelector {
    * Handle dragging or highlight the plane we are hovering over
    */
   private handleMouseMove(event: MouseEvent): void {
+    if (!this.enabled) return
+
     // Handle plane dragging
     if (this.dragger.isDragging() && this.mouseDownPos) {
       const dx = event.clientX - this.mouseDownPos.x
@@ -109,6 +126,8 @@ export class PlaneSelector {
    * Handle mouse up - detect clicks vs drags
    */
   private handleMouseUp(event: MouseEvent): void {
+    if (!this.enabled) return
+
     if (this.mouseDownPos && event.button === 0) {
       const dx = event.clientX - this.mouseDownPos.x
       const dy = event.clientY - this.mouseDownPos.y
@@ -128,7 +147,7 @@ export class PlaneSelector {
   }
 
   /**
-   * Handle click - select plane under cursor
+   * Handle click - select plane under cursor, or deselect if clicking empty space
    */
   private handleClick(event: MouseEvent): void {
     const planeMeshes = this.planes.map(p => p.getPlaneMesh())
@@ -139,6 +158,23 @@ export class PlaneSelector {
       const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
       if (plane) {
         this.selectPlane(plane)
+      }
+    } else {
+      // Clicked empty space - deselect
+      this.deselectAll()
+    }
+  }
+
+  /**
+   * Deselect all planes
+   */
+  deselectAll(): void {
+    if (this.selectedPlane) {
+      this.selectedPlane.setVisualState('default')
+      this.selectedPlane = null
+
+      if (this.onSelectionChange) {
+        this.onSelectionChange(null)
       }
     }
   }
@@ -163,9 +199,9 @@ export class PlaneSelector {
   }
 
   /**
-   * Set callback for when selection changes
+   * Set callback for when selection changes (null means deselected)
    */
-  setOnSelectionChange(callback: (plane: SketchPlane) => void): void {
+  setOnSelectionChange(callback: (plane: SketchPlane | null) => void): void {
     this.onSelectionChange = callback
   }
 
@@ -208,9 +244,11 @@ export class PlaneSelector {
     this.selectedPlane = null
     this.hoveredPlane = null
 
-    // Update the planes array in place (keep same reference)
-    this.planes.length = 0
-    this.planes.push(...newPlanes)
+    // Update planes reference if different (avoid clearing then pushing same array)
+    if (this.planes !== newPlanes) {
+      this.planes.length = 0
+      this.planes.push(...newPlanes)
+    }
 
     // Reset the dragger's planes reference
     this.dragger.reset(newPlanes)

@@ -34,6 +34,8 @@ export class SketchEditor {
   private isDeletingVertex: boolean = false
   private deletePreviewMarker: THREE.Mesh
 
+  // No selection message overlay
+  private noSelectionMessage: HTMLDivElement
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -48,8 +50,8 @@ export class SketchEditor {
     grid.position.z = -0.01  // Behind everything else
     this.scene.add(grid)
 
-    // Create ghost vertex (hidden until hovering a segment)
-    const ghostGeometry = new THREE.PlaneGeometry(SKETCH.GHOST_VERTEX_SIZE, SKETCH.GHOST_VERTEX_SIZE)
+    // Create ghost vertex (hidden until hovering a segment) - unit size, scaled dynamically
+    const ghostGeometry = new THREE.PlaneGeometry(1, 1)
     const ghostMaterial = new THREE.MeshBasicMaterial({
       color: SKETCH.GHOST_VERTEX_COLOR,
       transparent: true,
@@ -62,7 +64,7 @@ export class SketchEditor {
     this.scene.add(this.ghostVertex)
 
     // Create delete preview marker (shown when dragging vertex causes self-intersection)
-    const deleteGeometry = new THREE.PlaneGeometry(SKETCH.GHOST_VERTEX_SIZE, SKETCH.GHOST_VERTEX_SIZE)
+    const deleteGeometry = new THREE.PlaneGeometry(1, 1)
     const deleteMaterial = new THREE.MeshBasicMaterial({
       color: SKETCH.DELETE_COLOR,
       transparent: true,
@@ -90,6 +92,12 @@ export class SketchEditor {
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
     this.renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(this.renderer.domElement)
+
+    // Create "no selection" message overlay
+    this.noSelectionMessage = document.createElement('div')
+    this.noSelectionMessage.className = 'no-selection-message'
+    this.noSelectionMessage.textContent = 'Select a plane to edit its sketch'
+    container.appendChild(this.noSelectionMessage)
 
     // Set up mouse event handlers for dragging
     this.setupMouseHandlers()
@@ -404,6 +412,26 @@ export class SketchEditor {
     this.camera.top = this.frustumSize / 2
     this.camera.bottom = -this.frustumSize / 2
     this.camera.updateProjectionMatrix()
+
+    this.updateVertexScales()
+  }
+
+  /**
+   * Update vertex scales to maintain constant screen size regardless of zoom
+   */
+  private updateVertexScales(): void {
+    // Calculate world units per pixel based on current frustum and viewport
+    const worldUnitsPerPixel = this.frustumSize / this.container.clientHeight
+
+    // Scale vertices to target screen pixel size
+    const vertexScale = SKETCH.VERTEX_SCREEN_PX * worldUnitsPerPixel
+    const ghostScale = SKETCH.GHOST_SCREEN_PX * worldUnitsPerPixel
+
+    if (this.currentSketch) {
+      this.currentSketch.setVertexScale(vertexScale)
+    }
+    this.ghostVertex.scale.set(ghostScale, ghostScale, 1)
+    this.deletePreviewMarker.scale.set(ghostScale, ghostScale, 1)
   }
 
   /**
@@ -434,6 +462,8 @@ export class SketchEditor {
     this.clear()
     this.currentSketch = sketch
     this.scene.add(sketch.getEditorGroup())
+    this.updateVertexScales()
+    this.noSelectionMessage.style.display = 'none'
   }
 
   /**
@@ -444,13 +474,14 @@ export class SketchEditor {
   }
 
   /**
-   * Clear the scene
+   * Clear the scene and show "no selection" message
    */
   clear(): void {
     if (this.currentSketch) {
       this.scene.remove(this.currentSketch.getEditorGroup())
       this.currentSketch = null
     }
+    this.noSelectionMessage.style.display = 'flex'
   }
 
   /**

@@ -3,12 +3,12 @@
 I used ChatGPT during the planning phase and Claude Code during development.
 
 I've been experimenting with Claude Code for several months so I knew it would
-be the right tool for this task. I've done Claude Code wrongly enough now, I've
-learned a pretty good flow:
+be the right tool for this task. I've made enough Claude Code mistakes, or mistakes
+with AI in general, I've learned a pretty good flow:
 
 1. Use Claude Code to generate the next step quickly.
 2. Iterate until functional, if needed, make sure it works fully.
-3. Examine the code closely and refactor by hand or with Claude Code.
+3. Periodically: examine the code closely and refactor by hand or with Claude Code.
 4. Go to step 1.
 
 Also commit often so if you make a change that doesn't work out you can easily
@@ -49,22 +49,31 @@ like. I added all decisions to the README.
 2. Add mouse-wheel-zoom to `SketchEditor`
 ![](images/04.jpg)
 
-### Add, move and delete planes. Detect self-intersections. ([PR #5](https://github.com/pwinston/maru/pull/5))
+## Add, move and delete planes. Detect self-intersections. ([PR #5](https://github.com/pwinston/maru/pull/5))
 1. 3D: Drag planes to move them in Z
 2. 3D: Add planes by dragging base upward
 3. 3D: Delete planes by dragging planes below ground, turns red, let go
 4. 2D: Detect self-intersections, dragged vert turns red, drop red vert to delete
-4. 2D: New `Geometry.ts` file
+5. 2D: New `Geometry.ts` file
 ![](images/05.jpg)
 
-### Can create a simple loft! ([PR #6](https://github.com/pwinston/maru/pull/6))  
+## Can create a simple loft! ([PR #6](https://github.com/pwinston/maru/pull/6))  
 1. For now same number of vertices on all sketch
 2. Option bar: None, Solid, Wireframe, Both
 ![](images/06.jpg)
 
-### 2D Sketch rotates, new help pane, grid, cleanup ([PR #6](https://github.com/pwinston/maru/pull/7))  
-* New grid, axes
-* Optionally rotate the 2D sketch as you orbit in 3D
-* Much more readable "help panel" to replace old "help bar"
-* Major cleanup of magic numbers into new `constants.ts` file
+## 2D Sketch rotates, new help pane, grid, cleanup ([PR #7](https://github.com/pwinston/maru/pull/7))  
+1. New grid, axes
+2. Optionally rotate the 2D sketch as you orbit in 3D
+3. Much more readable "help panel" to replace old "help bar"
+4. Major cleanup of magic numbers into new `constants.ts` file
 ![](images/07.jpg)
+
+## Support a variable number of vertices! ([PR #8](https://github.com/pwinston/maru/pull/8))  
+1. Support any number vertices on each plane, finds a correspondence
+2. Click in empty space in 3D windows to deselect all planes
+3. Move ui into new  `ui/MainToolbar.ts` and `ui/SketchToolbar.ts`
+4. Optional roofs!
+5. Display walls as triangles or quads
+6. Add "instant shape" buttons for 3 through 100 sides
+![](images/08.jpg)
