@@ -21,11 +21,9 @@ const container2d = document.querySelector<HTMLDivElement>('#viewport-2d')!
 const viewport3d = new Viewport3D(container3d)
 const sketchEditor = new SketchEditor(container2d)
 
-// Default planes.
+// Default planes - just the ground floor to start
 const sketchPlanes = [
-  new SketchPlane(4, 0),    // Ground floor
-  new SketchPlane(3, 1),    // First floor
-  new SketchPlane(2, 2),    // Second floor
+  new SketchPlane(1, 0),    // Ground floor
 ]
 
 // Add planes to the 3D viewport.
@@ -108,10 +106,10 @@ new HelpPanel([
 const renderToolbar = document.createElement('div')
 renderToolbar.className = 'render-toolbar'
 renderToolbar.innerHTML = `
-  <button data-mode="none">None</button>
+  <button data-mode="none" class="active">None</button>
   <button data-mode="solid">Solid</button>
   <button data-mode="wire">Wire</button>
-  <button data-mode="both" class="active">Both</button>
+  <button data-mode="both">Both</button>
 `
 container3d.appendChild(renderToolbar)
 
@@ -129,8 +127,9 @@ function setRenderMode(mode: RenderMode): void {
   renderToolbar.querySelector(`button[data-mode="${mode}"]`)?.classList.add('active')
 }
 
-// Initially hide profiles since we start in 'both' mode
-updateProfileVisibility('both')
+// Start in 'none' mode since we only have 1 plane (no loft)
+loft.setRenderMode('none')
+updateProfileVisibility('none')
 
 // Handle render mode button clicks
 renderToolbar.addEventListener('click', (e) => {
