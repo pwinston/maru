@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { SketchPlane } from './SketchPlane'
 
-export type RenderMode = 'solid' | 'wire' | 'both'
+export type RenderMode = 'solid' | 'wire' | 'both' | 'none'
 
 /**
  * Creates a 3D mesh by lofting through sketch planes at different heights.
@@ -49,6 +49,13 @@ export class Loft {
     if (this.wireframe) {
       this.wireframe.visible = this.renderMode === 'wire' || this.renderMode === 'both'
     }
+  }
+
+  /**
+   * Check if loft is visible (not in 'none' mode)
+   */
+  isVisible(): boolean {
+    return this.renderMode !== 'none'
   }
 
   /**

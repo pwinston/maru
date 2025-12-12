@@ -161,6 +161,13 @@ export class SketchPlane {
   }
 
   /**
+   * Set visibility of the sketch profile lines
+   */
+  setProfileVisible(visible: boolean): void {
+    this.sketch.getLineGroup().visible = visible
+  }
+
+  /**
    * Create a centered square with the given size
    */
   private static createSquare(size: number): THREE.Vector2[] {

@@ -104,11 +104,21 @@ new HelpBar([
 const renderToolbar = document.createElement('div')
 renderToolbar.className = 'render-toolbar'
 renderToolbar.innerHTML = `
+  <button data-mode="none">None</button>
   <button data-mode="solid">Solid</button>
   <button data-mode="wire">Wire</button>
   <button data-mode="both" class="active">Both</button>
 `
 container3d.appendChild(renderToolbar)
+
+// Update profile visibility based on render mode
+function updateProfileVisibility(mode: RenderMode): void {
+  const showProfiles = mode === 'none'
+  sketchPlanes.forEach(plane => plane.setProfileVisible(showProfiles))
+}
+
+// Initially hide profiles since we start in 'both' mode
+updateProfileVisibility('both')
 
 // Handle render mode button clicks
 renderToolbar.addEventListener('click', (e) => {
@@ -116,6 +126,7 @@ renderToolbar.addEventListener('click', (e) => {
   if (target.tagName === 'BUTTON') {
     const mode = target.dataset.mode as RenderMode
     loft.setRenderMode(mode)
+    updateProfileVisibility(mode)
     renderToolbar.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
     target.classList.add('active')
   }
