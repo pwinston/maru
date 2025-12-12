@@ -136,6 +136,96 @@ export function pointAtDistance(polyline: THREE.Vector2[], distance: number): TH
 }
 
 // ============================================================================
+// Polygon Triangulation
+// ============================================================================
+
+/**
+ * Triangulate a simple polygon using ear clipping algorithm.
+ * Returns array of triangle indices (each triple is one triangle).
+ * Assumes CCW winding.
+ */
+export function triangulatePolygon(vertices: THREE.Vector2[]): number[] {
+  const n = vertices.length
+  if (n < 3) return []
+  if (n === 3) return [0, 1, 2]
+
+  // Create a linked list of vertex indices
+  const indices = vertices.map((_, i) => i)
+  const result: number[] = []
+
+  // Helper to check if a vertex is an "ear" (can be clipped)
+  const isEar = (prev: number, curr: number, next: number): boolean => {
+    const a = vertices[indices[prev]]
+    const b = vertices[indices[curr]]
+    const c = vertices[indices[next]]
+
+    // Check if triangle is CCW (convex at this vertex)
+    const cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+    if (cross <= 0) return false
+
+    // Check that no other vertex is inside this triangle
+    for (let i = 0; i < indices.length; i++) {
+      if (i === prev || i === curr || i === next) continue
+      if (pointInTriangle(vertices[indices[i]], a, b, c)) return false
+    }
+    return true
+  }
+
+  // Ear clipping loop
+  let remaining = indices.length
+  let curr = 0
+  let attempts = 0
+  const maxAttempts = remaining * remaining // Safety limit
+
+  while (remaining > 3 && attempts < maxAttempts) {
+    const prev = (curr - 1 + remaining) % remaining
+    const next = (curr + 1) % remaining
+
+    if (isEar(prev, curr, next)) {
+      // Add triangle
+      result.push(indices[prev], indices[curr], indices[next])
+      // Remove the ear vertex
+      indices.splice(curr, 1)
+      remaining--
+      curr = curr % remaining
+      attempts = 0 // Reset attempts after successful clip
+    } else {
+      curr = (curr + 1) % remaining
+      attempts++
+    }
+  }
+
+  // Add final triangle
+  if (remaining === 3) {
+    result.push(indices[0], indices[1], indices[2])
+  }
+
+  return result
+}
+
+/**
+ * Check if point p is inside triangle abc.
+ */
+function pointInTriangle(p: THREE.Vector2, a: THREE.Vector2, b: THREE.Vector2, c: THREE.Vector2): boolean {
+  const v0x = c.x - a.x, v0y = c.y - a.y
+  const v1x = b.x - a.x, v1y = b.y - a.y
+  const v2x = p.x - a.x, v2y = p.y - a.y
+
+  const dot00 = v0x * v0x + v0y * v0y
+  const dot01 = v0x * v1x + v0y * v1y
+  const dot02 = v0x * v2x + v0y * v2y
+  const dot11 = v1x * v1x + v1y * v1y
+  const dot12 = v1x * v2x + v1y * v2y
+
+  const invDenom = 1 / (dot00 * dot11 - dot01 * dot01)
+  const u = (dot11 * dot02 - dot01 * dot12) * invDenom
+  const v = (dot00 * dot12 - dot01 * dot02) * invDenom
+
+  // Check if point is in triangle (excluding edges)
+  return (u > 0) && (v > 0) && (u + v < 1)
+}
+
+// ============================================================================
 // Segment Intersection Utilities
 // ============================================================================
 

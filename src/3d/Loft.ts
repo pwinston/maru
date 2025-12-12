@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { SketchPlane } from './SketchPlane'
 import { LOFT } from '../constants'
+import { triangulatePolygon } from '../util/Geometry'
 
 export type RenderMode = 'solid' | 'wire' | 'both' | 'none'
 
@@ -270,6 +271,14 @@ export class Loft {
         indices.push(bl, br, tr)
         indices.push(bl, tr, tl)
       }
+    }
+
+    // Add roof cap (triangulate top plane)
+    const topBaseIndex = (numPlanes - 1) * numVerticesPerPlane
+    const topVerts2d = sortedVertices[numPlanes - 1]
+    const roofTriangles = triangulatePolygon(topVerts2d)
+    for (const idx of roofTriangles) {
+      indices.push(topBaseIndex + idx)
     }
 
     const geometry = new THREE.BufferGeometry()
