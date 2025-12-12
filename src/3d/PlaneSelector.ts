@@ -15,7 +15,7 @@ export class PlaneSelector {
   private selectedPlane: SketchPlane | null = null
   private hoveredPlane: SketchPlane | null = null
   private mouseDownPos: { x: number; y: number } | null = null
-  private onSelectionChange?: (plane: SketchPlane) => void
+  private onSelectionChange?: (plane: SketchPlane | null) => void
 
   private dragger: PlaneDragger
 
@@ -128,7 +128,7 @@ export class PlaneSelector {
   }
 
   /**
-   * Handle click - select plane under cursor
+   * Handle click - select plane under cursor, or deselect if clicking empty space
    */
   private handleClick(event: MouseEvent): void {
     const planeMeshes = this.planes.map(p => p.getPlaneMesh())
@@ -139,6 +139,23 @@ export class PlaneSelector {
       const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
       if (plane) {
         this.selectPlane(plane)
+      }
+    } else {
+      // Clicked empty space - deselect
+      this.deselectAll()
+    }
+  }
+
+  /**
+   * Deselect all planes
+   */
+  deselectAll(): void {
+    if (this.selectedPlane) {
+      this.selectedPlane.setVisualState('default')
+      this.selectedPlane = null
+
+      if (this.onSelectionChange) {
+        this.onSelectionChange(null)
       }
     }
   }
@@ -163,9 +180,9 @@ export class PlaneSelector {
   }
 
   /**
-   * Set callback for when selection changes
+   * Set callback for when selection changes (null means deselected)
    */
-  setOnSelectionChange(callback: (plane: SketchPlane) => void): void {
+  setOnSelectionChange(callback: (plane: SketchPlane | null) => void): void {
     this.onSelectionChange = callback
   }
 

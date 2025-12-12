@@ -47,9 +47,15 @@ rebuildLoft()
 
 const planeSelector = new PlaneSelector(viewport3d, sketchPlanes)
 
-// Update 2D editor when plane selection changes
+// User clicked on a plane, or in empty space.
 planeSelector.setOnSelectionChange((plane) => {
-  sketchEditor.setSketch(plane.getSketch())
+  if (plane) {
+    // SketchEditor should show the selected plane's sketch.
+    sketchEditor.setSketch(plane.getSketch())
+  } else {
+    // SketchEditor should show nothing.
+    sketchEditor.clear()
+  }
 })
 
 // Rebuild loft when plane height changes

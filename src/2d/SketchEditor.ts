@@ -34,6 +34,8 @@ export class SketchEditor {
   private isDeletingVertex: boolean = false
   private deletePreviewMarker: THREE.Mesh
 
+  // No selection message overlay
+  private noSelectionMessage: HTMLDivElement
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -90,6 +92,12 @@ export class SketchEditor {
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
     this.renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(this.renderer.domElement)
+
+    // Create "no selection" message overlay
+    this.noSelectionMessage = document.createElement('div')
+    this.noSelectionMessage.className = 'no-selection-message'
+    this.noSelectionMessage.textContent = 'Select a plane to edit its sketch'
+    container.appendChild(this.noSelectionMessage)
 
     // Set up mouse event handlers for dragging
     this.setupMouseHandlers()
@@ -455,6 +463,7 @@ export class SketchEditor {
     this.currentSketch = sketch
     this.scene.add(sketch.getEditorGroup())
     this.updateVertexScales()
+    this.noSelectionMessage.style.display = 'none'
   }
 
   /**
@@ -465,13 +474,14 @@ export class SketchEditor {
   }
 
   /**
-   * Clear the scene
+   * Clear the scene and show "no selection" message
    */
   clear(): void {
     if (this.currentSketch) {
       this.scene.remove(this.currentSketch.getEditorGroup())
       this.currentSketch = null
     }
+    this.noSelectionMessage.style.display = 'flex'
   }
 
   /**

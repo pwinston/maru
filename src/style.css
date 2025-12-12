@@ -262,3 +262,20 @@ button:focus-visible {
   color: white;
   border-color: rgba(68, 136, 204, 0.8);
 }
+
+/* No selection message (2D viewport) */
+.no-selection-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+  z-index: 50;
+}
