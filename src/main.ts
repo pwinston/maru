@@ -6,7 +6,7 @@ import { SketchPlane } from './3d/SketchPlane'
 import { HelpPanel } from './util/HelpPanel'
 import { Loft } from './3d/Loft'
 import { DEFAULT_BUILDING_SIZE } from './constants'
-import { makeLoftable } from './loft/makeLoftable'
+import { LoftableModel } from './loft/LoftableModel'
 import { MainToolbar } from './ui/MainToolbar'
 import { SketchToolbar } from './ui/SketchToolbar'
 import { createRegularPolygon } from './util/Geometry'
@@ -42,8 +42,8 @@ viewport3d.add(loft.getGroup())
 
 // Helper function to rebuild loft with vertex resampling
 function rebuildLoft(): void {
-  const loftableVertices = makeLoftable(sketchPlanes)
-  loft.rebuildFromVertices(sketchPlanes, loftableVertices)
+  const model = LoftableModel.fromPlanes(sketchPlanes)
+  loft.rebuildFromModel(model)
 }
 
 // Helper to find the top plane (highest height)

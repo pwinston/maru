@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { SketchPlane } from './SketchPlane'
 import { LOFT } from '../constants'
 import { triangulatePolygon } from '../util/Geometry'
+import { LoftableModel, LoftSegment } from '../loft/LoftableModel'
 
 export type WireframeMode = 'off' | 'triangles' | 'quads'
 
@@ -94,12 +95,10 @@ export class Loft {
   }
 
   /**
-   * Rebuild the loft using pre-computed loftable vertices.
-   * This bypasses the vertex count check since vertices are already matched.
-   * @param planes The original sketch planes (for height information)
-   * @param loftableVertices Pre-resampled vertex arrays, all with same count
+   * Rebuild the loft from a LoftableModel with per-segment vertex counts.
+   * Each segment can have its own vertex count, optimized for that pair.
    */
-  rebuildFromVertices(planes: SketchPlane[], loftableVertices: THREE.Vector2[][]): void {
+  rebuildFromModel(model: LoftableModel): void {
     // Clear existing geometry
     this.group.clear()
     this.mesh = null
@@ -107,32 +106,19 @@ export class Loft {
     this.wireframeQuads = null
     this.wireframeTris = null
 
-    if (planes.length < 2) return
-    if (loftableVertices.length !== planes.length) {
-      console.warn('Loft: vertices array count must match planes count')
-      return
-    }
+    if (model.segments.length === 0) return
 
-    // Verify all vertex arrays have the same count
-    const counts = loftableVertices.map(v => v.length)
-    if (!counts.every(c => c === counts[0])) {
-      console.warn('Loft: all loftable vertex arrays must have the same count')
-      return
-    }
+    // Sort segments by height (bottom to top)
+    const sortedSegments = [...model.segments].sort(
+      (a, b) => a.getBottomHeight() - b.getBottomHeight()
+    )
 
-    // Sort planes by height, reorder vertices to match
-    const indexed = planes.map((p, i) => ({ height: p.getHeight(), index: i }))
-    indexed.sort((a, b) => a.height - b.height)
-
-    const sortedPlanes = indexed.map(item => planes[item.index])
-    const sortedVertices = indexed.map(item => loftableVertices[item.index])
-
-    // Build wall geometry (without roof)
-    const wallGeometry = this.buildWallGeometry(sortedPlanes, sortedVertices)
+    // Build wall geometry from all segments
+    const wallGeometry = this.buildWallGeometryFromSegments(sortedSegments)
     if (!wallGeometry) return
 
-    // Build roof geometry separately
-    const roofGeometry = this.buildRoofGeometry(sortedPlanes, sortedVertices)
+    // Build roof geometry from top of last segment
+    const roofGeometry = this.buildRoofGeometryFromSegment(sortedSegments[sortedSegments.length - 1])
 
     // Create wall mesh
     const material = new THREE.MeshStandardMaterial({
@@ -149,11 +135,11 @@ export class Loft {
       this.group.add(this.roofMesh)
     }
 
-    // Create both wireframe types (walls only for triangles, include roof outline for quads)
+    // Create both wireframe types
     const wireMaterial = new THREE.LineBasicMaterial({ color: LOFT.WIRE_COLOR })
 
     // Quad wireframe (without triangle diagonals)
-    const quadWireGeometry = this.buildQuadWireframeFromVertices(sortedPlanes, sortedVertices)
+    const quadWireGeometry = this.buildQuadWireframeFromSegments(sortedSegments)
     this.wireframeQuads = new THREE.LineSegments(quadWireGeometry, wireMaterial)
     this.group.add(this.wireframeQuads)
 
@@ -163,6 +149,126 @@ export class Loft {
     this.group.add(this.wireframeTris)
 
     this.updateVisibility()
+  }
+
+  /**
+   * Build wall geometry from segments (each segment can have different vertex count).
+   */
+  private buildWallGeometryFromSegments(segments: LoftSegment[]): THREE.BufferGeometry | null {
+    const allPositions: number[] = []
+    const allIndices: number[] = []
+    let vertexOffset = 0
+
+    for (const segment of segments) {
+      const numVerts = segment.getVertexCount()
+      if (numVerts === 0) continue
+
+      const bottomHeight = segment.getBottomHeight()
+      const topHeight = segment.getTopHeight()
+
+      // Add bottom vertices
+      for (const v of segment.bottomVertices) {
+        allPositions.push(v.x, bottomHeight, -v.y)
+      }
+      // Add top vertices
+      for (const v of segment.topVertices) {
+        allPositions.push(v.x, topHeight, -v.y)
+      }
+
+      // Build triangles for this segment
+      for (let v = 0; v < numVerts; v++) {
+        const nextV = (v + 1) % numVerts
+        const bl = vertexOffset + v
+        const br = vertexOffset + nextV
+        const tl = vertexOffset + numVerts + v
+        const tr = vertexOffset + numVerts + nextV
+
+        allIndices.push(bl, br, tr)
+        allIndices.push(bl, tr, tl)
+      }
+
+      vertexOffset += numVerts * 2
+    }
+
+    if (allPositions.length === 0) return null
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(allPositions, 3))
+    geometry.setIndex(allIndices)
+    geometry.computeVertexNormals()
+
+    return geometry
+  }
+
+  /**
+   * Build quad wireframe from segments.
+   */
+  private buildQuadWireframeFromSegments(segments: LoftSegment[]): THREE.BufferGeometry {
+    const linePositions: number[] = []
+
+    for (const segment of segments) {
+      const numVerts = segment.getVertexCount()
+      if (numVerts === 0) continue
+
+      const bottomHeight = segment.getBottomHeight()
+      const topHeight = segment.getTopHeight()
+
+      // Convert to 3D
+      const bottom3d = segment.bottomVertices.map(v => new THREE.Vector3(v.x, bottomHeight, -v.y))
+      const top3d = segment.topVertices.map(v => new THREE.Vector3(v.x, topHeight, -v.y))
+
+      // Horizontal edges (bottom polygon)
+      for (let v = 0; v < numVerts; v++) {
+        const nextV = (v + 1) % numVerts
+        const v1 = bottom3d[v]
+        const v2 = bottom3d[nextV]
+        linePositions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z)
+      }
+
+      // Horizontal edges (top polygon)
+      for (let v = 0; v < numVerts; v++) {
+        const nextV = (v + 1) % numVerts
+        const v1 = top3d[v]
+        const v2 = top3d[nextV]
+        linePositions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z)
+      }
+
+      // Vertical edges
+      for (let v = 0; v < numVerts; v++) {
+        const v1 = bottom3d[v]
+        const v2 = top3d[v]
+        linePositions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z)
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3))
+    return geometry
+  }
+
+  /**
+   * Build roof geometry from the top of a segment.
+   */
+  private buildRoofGeometryFromSegment(segment: LoftSegment): THREE.BufferGeometry | null {
+    const topVerts = segment.topVertices
+    const topHeight = segment.getTopHeight()
+
+    if (topVerts.length < 3) return null
+
+    const positions: number[] = []
+    for (const v of topVerts) {
+      positions.push(v.x, topHeight, -v.y)
+    }
+
+    const roofTriangles = triangulatePolygon(topVerts)
+    if (roofTriangles.length === 0) return null
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setIndex(roofTriangles)
+    geometry.computeVertexNormals()
+
+    return geometry
   }
 
   /**
