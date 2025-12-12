@@ -12,6 +12,7 @@ export class Sketch {
   private line: THREE.Line | null = null
   private vertexMeshes: THREE.Mesh[] = []
   private segmentHitMeshes: THREE.Mesh[] = []
+  private currentScale: number = 1  // Remembered scale for auto-apply on rebuild
 
   constructor(vertices: THREE.Vector2[]) {
     this.vertices = vertices.map(v => v.clone())
@@ -53,6 +54,8 @@ export class Sketch {
       this.vertexMeshes.push(mesh)
       this.editorGroup.add(mesh)
     }
+
+    this.applyVertexScale()
   }
 
   /**
@@ -95,7 +98,8 @@ export class Sketch {
    * Create a control point mesh at a vertex position
    */
   private createVertexMesh(position: THREE.Vector2): THREE.Mesh {
-    const geometry = new THREE.PlaneGeometry(SKETCH.VERTEX_SIZE, SKETCH.VERTEX_SIZE)
+    // Use unit geometry - scale will be set by setVertexScale()
+    const geometry = new THREE.PlaneGeometry(1, 1)
     const material = new THREE.MeshBasicMaterial({
       color: SKETCH.VERTEX_COLOR,
       side: THREE.DoubleSide
@@ -103,6 +107,24 @@ export class Sketch {
     const mesh = new THREE.Mesh(geometry, material)
     mesh.position.set(position.x, position.y, 0.01) // Slightly above the plane
     return mesh
+  }
+
+  /**
+   * Set the scale of all vertex meshes (for zoom-invariant sizing).
+   * Scale is remembered and auto-applied on any rebuild.
+   */
+  setVertexScale(scale: number): void {
+    this.currentScale = scale
+    this.applyVertexScale()
+  }
+
+  /**
+   * Apply the current scale to all vertex meshes
+   */
+  private applyVertexScale(): void {
+    for (const mesh of this.vertexMeshes) {
+      mesh.scale.set(this.currentScale, this.currentScale, 1)
+    }
   }
 
   /**
@@ -286,6 +308,8 @@ export class Sketch {
       this.vertexMeshes.push(mesh)
       this.editorGroup.add(mesh)
     }
+
+    this.applyVertexScale()
   }
 
   /**
