@@ -60,6 +60,8 @@ export const PLANE = {
 export const LOFT = {
   SOLID_COLOR: 0x4488cc,
   WIRE_COLOR: 0x000000,
+  DEFAULT_ALGORITHM: 'anchor-resample' as string,
+  ANCHOR_EPSILON: 0.5,  // Max distance for anchor matching (meters)
 }
 
 // Interaction thresholds

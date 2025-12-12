@@ -67,19 +67,32 @@ at a 3D angle would be a lot harder without really adding much value.
 
 ## Implementation Layout
 
-### 3D Viewport
-- **src/3d/Viewport3D.ts** – The 3D scene with orbit controls  
-- **src/3d/PlaneSelector.ts** – Handles hover and click on planes  
-- **src/3d/PlaneDragger.ts** - Dragging planes to create, move or delete them
-- **src/3d/SketchPlane.ts** – 3D plane, renders the 2D sketch  
-
-### 2D Viewport
-- **src/2d/Sketch.ts** – The 2D sketch itself, vertices and lines  
-- **src/2d/SketchEditor.ts** – Mouse controls to edit vertices
-
-### Util
-- **src/util/HelpBar.ts** – help bar at bottom of viewport
-- **src/util/Bounds.ts** - axis-aligned bounding box
-
-### Configuration
-- **src/constants.ts**
+```
+src/
+├── main.ts                      # App entry point, wires together viewports and event handlers
+├── constants.ts                 # Configuration values (colors, sizes, thresholds)
+│
+├── 2d/
+│   ├── Sketch.ts                # 2D polygon: vertices, lines, visual meshes
+│   └── SketchEditor.ts          # 2D viewport with vertex drag/insert/delete
+│
+├── 3d/
+│   ├── Viewport3D.ts            # 3D scene with orbit controls and lighting
+│   ├── SketchPlane.ts           # Sketch positioned at a height in 3D
+│   ├── PlaneSelector.ts         # Hover/click plane selection
+│   ├── PlaneDragger.ts          # Drag to move/create/delete planes
+│   └── Loft.ts                  # 3D surface connecting sketch planes
+│
+├── loft/
+│   ├── LoftAlgorithms.ts        # Algorithm registry (register/get by name)
+│   ├── makeLoftable.ts          # Entry point: makeLoftable(planes, algorithm?)
+│   ├── UniformResampleAlgorithm.ts   # Simple arc-length resampling
+│   └── AnchorResampleAlgorithm.ts    # Anchor-based chunk resampling
+│
+└── util/
+    ├── Geometry.ts              # Polygon math (area, winding, resampling, intersection)
+    ├── Bounds.ts                # 2D axis-aligned bounding box
+    ├── GridHelper.ts            # Grid line rendering
+    ├── HelpBar.ts               # Legacy help bar (deprecated)
+    └── HelpPanel.ts             # Keyboard shortcut help overlay
+```

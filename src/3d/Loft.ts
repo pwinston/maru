@@ -170,4 +170,113 @@ export class Loft {
 
     return geometry
   }
+
+  /**
+   * Rebuild the loft using pre-computed loftable vertices.
+   * This bypasses the vertex count check since vertices are already matched.
+   * @param planes The original sketch planes (for height information)
+   * @param loftableVertices Pre-resampled vertex arrays, all with same count
+   */
+  rebuildFromVertices(planes: SketchPlane[], loftableVertices: THREE.Vector2[][]): void {
+    // Clear existing geometry
+    this.group.clear()
+    this.mesh = null
+    this.wireframe = null
+
+    if (planes.length < 2) return
+    if (loftableVertices.length !== planes.length) {
+      console.warn('Loft: vertices array count must match planes count')
+      return
+    }
+
+    // Verify all vertex arrays have the same count
+    const counts = loftableVertices.map(v => v.length)
+    if (!counts.every(c => c === counts[0])) {
+      console.warn('Loft: all loftable vertex arrays must have the same count')
+      return
+    }
+
+    // Sort planes by height, reorder vertices to match
+    const indexed = planes.map((p, i) => ({ height: p.getHeight(), index: i }))
+    indexed.sort((a, b) => a.height - b.height)
+
+    const sortedPlanes = indexed.map(item => planes[item.index])
+    const sortedVertices = indexed.map(item => loftableVertices[item.index])
+
+    // Build geometry using sortedVertices
+    const geometry = this.buildGeometryFromVertices(sortedPlanes, sortedVertices)
+    if (!geometry) return
+
+    // Create mesh and wireframe
+    const material = new THREE.MeshStandardMaterial({
+      color: LOFT.SOLID_COLOR,
+      side: THREE.DoubleSide,
+      flatShading: false,
+    })
+    this.mesh = new THREE.Mesh(geometry, material)
+    this.group.add(this.mesh)
+
+    const wireGeometry = new THREE.WireframeGeometry(geometry)
+    const wireMaterial = new THREE.LineBasicMaterial({ color: LOFT.WIRE_COLOR })
+    this.wireframe = new THREE.LineSegments(wireGeometry, wireMaterial)
+    this.group.add(this.wireframe)
+
+    this.updateVisibility()
+  }
+
+  /**
+   * Build geometry from pre-computed vertices.
+   */
+  private buildGeometryFromVertices(
+    sortedPlanes: SketchPlane[],
+    sortedVertices: THREE.Vector2[][]
+  ): THREE.BufferGeometry | null {
+    const numPlanes = sortedPlanes.length
+    const numVerticesPerPlane = sortedVertices[0].length
+
+    if (numVerticesPerPlane === 0) return null
+
+    // Convert 2D to 3D coordinates
+    const allVertices: THREE.Vector3[][] = []
+    for (let p = 0; p < numPlanes; p++) {
+      const height = sortedPlanes[p].getHeight()
+      const verts2d = sortedVertices[p]
+      const verts3d = verts2d.map(v => new THREE.Vector3(v.x, height, -v.y))
+      allVertices.push(verts3d)
+    }
+
+    // Build triangles (same logic as existing buildGeometry)
+    const positions: number[] = []
+    const indices: number[] = []
+
+    for (let p = 0; p < numPlanes; p++) {
+      for (let v = 0; v < numVerticesPerPlane; v++) {
+        const vert = allVertices[p][v]
+        positions.push(vert.x, vert.y, vert.z)
+      }
+    }
+
+    for (let p = 0; p < numPlanes - 1; p++) {
+      const baseIndex = p * numVerticesPerPlane
+      const nextBaseIndex = (p + 1) * numVerticesPerPlane
+
+      for (let v = 0; v < numVerticesPerPlane; v++) {
+        const nextV = (v + 1) % numVerticesPerPlane
+        const bl = baseIndex + v
+        const br = baseIndex + nextV
+        const tl = nextBaseIndex + v
+        const tr = nextBaseIndex + nextV
+
+        indices.push(bl, br, tr)
+        indices.push(bl, tr, tl)
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setIndex(indices)
+    geometry.computeVertexNormals()
+
+    return geometry
+  }
 }

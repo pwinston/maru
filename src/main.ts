@@ -6,6 +6,7 @@ import { SketchPlane } from './3d/SketchPlane'
 import { HelpPanel } from './util/HelpPanel'
 import { Loft, type RenderMode } from './3d/Loft'
 import { DEFAULT_BUILDING_SIZE } from './constants'
+import { makeLoftable } from './loft/makeLoftable'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -35,7 +36,14 @@ sketchPlanes.forEach(plane => {
 // Create loft and add to 3D viewport
 const loft = new Loft()
 viewport3d.add(loft.getGroup())
-loft.rebuild(sketchPlanes)
+
+// Helper function to rebuild loft with vertex resampling
+function rebuildLoft(): void {
+  const loftableVertices = makeLoftable(sketchPlanes)
+  loft.rebuildFromVertices(sketchPlanes, loftableVertices)
+}
+
+rebuildLoft()
 
 const planeSelector = new PlaneSelector(viewport3d, sketchPlanes)
 
@@ -46,17 +54,17 @@ planeSelector.setOnSelectionChange((plane) => {
 
 // Rebuild loft when plane height changes
 planeSelector.setOnPlaneHeightChange(() => {
-  loft.rebuild(sketchPlanes)
+  rebuildLoft()
 })
 
 // Rebuild loft when new plane is created
 planeSelector.setOnPlaneCreate(() => {
-  loft.rebuild(sketchPlanes)
+  rebuildLoft()
 })
 
 // Rebuild loft when plane is deleted
 planeSelector.setOnPlaneDelete(() => {
-  loft.rebuild(sketchPlanes)
+  rebuildLoft()
   // Switch to 'none' mode if down to 1 plane (no loft to show)
   if (sketchPlanes.length < 2) {
     setRenderMode('none')
@@ -68,7 +76,7 @@ sketchEditor.setOnVertexChange((index, position) => {
   const selectedPlane = planeSelector.getSelectedPlane()
   if (selectedPlane) {
     selectedPlane.setVertex(index, position)
-    loft.rebuild(sketchPlanes)
+    rebuildLoft()
   }
 })
 
@@ -77,7 +85,7 @@ sketchEditor.setOnVertexInsert((segmentIndex, position) => {
   const selectedPlane = planeSelector.getSelectedPlane()
   if (selectedPlane) {
     selectedPlane.insertVertex(segmentIndex, position)
-    loft.rebuild(sketchPlanes)
+    rebuildLoft()
   }
 })
 
@@ -86,7 +94,7 @@ sketchEditor.setOnVertexDelete((index) => {
   const selectedPlane = planeSelector.getSelectedPlane()
   if (selectedPlane) {
     selectedPlane.deleteVertex(index)
-    loft.rebuild(sketchPlanes)
+    rebuildLoft()
   }
 })
 
@@ -160,7 +168,7 @@ function newModel(): void {
   setRenderMode('none')
 
   // Rebuild loft (will be empty with just 1 plane)
-  loft.rebuild(newPlanes)
+  rebuildLoft()
 
   // Select the new plane
   planeSelector.selectPlane(newPlane)
