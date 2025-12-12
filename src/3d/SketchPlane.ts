@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { Sketch } from '../2d/Sketch'
 
-const BORDER_PERCENT = 0.05 // 5% border around sketch
+const BORDER_PERCENT = 0.15 // 15% border around sketch
 
 export type PlaneVisualState = 'default' | 'hovered' | 'selected' | 'deleting'
 
@@ -158,6 +158,13 @@ export class SketchPlane {
     const material = this.planeMesh.material as THREE.MeshBasicMaterial
     material.color.setHex(style.color)
     material.opacity = style.opacity
+  }
+
+  /**
+   * Set visibility of the sketch profile lines
+   */
+  setProfileVisible(visible: boolean): void {
+    this.sketch.getLineGroup().visible = visible
   }
 
   /**

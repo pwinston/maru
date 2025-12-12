@@ -190,4 +190,14 @@ export class PlaneDragger {
   setOnSelectionCleared(callback: () => void): void {
     this.onSelectionCleared = callback
   }
+
+  /**
+   * Reset to a new set of planes
+   */
+  reset(newPlanes: SketchPlane[]): void {
+    this.draggedPlane = null
+    this.isCreatingNewPlane = false
+    this.isDeletingPlane = false
+    this.planes = newPlanes
+  }
 }

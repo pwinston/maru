@@ -25,14 +25,39 @@ like. I added all decisions to the README.
 
 # PRs
 
-PR #1 - Split Screen: 3D viewport on left, 2d sketch view on right  
+## Split Screen: 3D viewport on left, 2d sketch view on right ([PR #1](https://github.com/pwinston/maru/pull/1))
+1. Initial split-screen view
+2. 3D Viewport on the left for planes and loft
+3. 2D Viewport on the right for editing sketches
 ![](images/01.jpg)
 
-PR #2 - Three hard-coded planes with picking/selection  
+## Three hard-coded planes with picking/selection ([PR #2](https://github.com/pwinston/maru/pull/2))
+1. 3D view: show 3 hard-coded sketches, just different sized squares
+2. 3D view: orbit controls + left-click for picking/selection 
+3. Sketch view: shows the selected hard-coded sketch
 ![](images/02.jpg)
 
-PR #3 - Simple sketch editing  
+## Simple sketch editing ([PR #3](https://github.com/pwinston/maru/pull/3))
+1. Introduce `Sketch` class, the polygon itself
+2. `SketchEditor` can now move vertices around
+3. Add `Bounds` class as cleanup
+4. Improve `PlaneSelector` and have 3 colors: normnal, hover, and selected
 ![](images/03.jpg)
 
-PR #4 - Ability to Add and Delete vertexes  
+## Ability to Add and Delete vertexes ([PR #4](https://github.com/pwinston/maru/pull/4))
+1. Modify `Sketch` and `SketchEditor` so we can add/delete vertices
+2. Add mouse-wheel-zoom to `SketchEditor`
 ![](images/04.jpg)
+
+### Add, move and delete planes. Detect self-intersections. ([PR #5](https://github.com/pwinston/maru/pull/5))
+1. 3D: Drag planes to move them in Z
+2. 3D: Add planes by dragging base upward
+3. 3D: Delete planes by dragging planes below ground, turns red, let go
+4. 2D: Detect self-intersections, dragged vert turns red, drop red vert to delete
+4. 2D: New `Geometry.ts` file
+![](images/05.jpg)
+
+### Can create a simple loft! ([PR #6](https://github.com/pwinston/maru/pull/6))  
+1. For now same number of vertices on all sketch
+2. Option bar: None, Solid, Wireframe, Both
+![](images/06.jpg)

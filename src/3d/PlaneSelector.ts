@@ -196,4 +196,23 @@ export class PlaneSelector {
   getSelectedPlane(): SketchPlane | null {
     return this.selectedPlane
   }
+
+  /**
+   * Reset to a new set of planes, clearing selection
+   */
+  reset(newPlanes: SketchPlane[]): void {
+    // Clear selection state
+    if (this.selectedPlane) {
+      this.selectedPlane.setVisualState('default')
+    }
+    this.selectedPlane = null
+    this.hoveredPlane = null
+
+    // Update the planes array in place (keep same reference)
+    this.planes.length = 0
+    this.planes.push(...newPlanes)
+
+    // Reset the dragger's planes reference
+    this.dragger.reset(newPlanes)
+  }
 }

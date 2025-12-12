@@ -158,3 +158,73 @@ button:focus-visible {
   height: 16px;
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Render mode toolbar */
+.render-toolbar {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
+}
+
+.render-toolbar button {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.render-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.render-toolbar button.active {
+  background: rgba(68, 136, 204, 0.6);
+  color: white;
+  border-color: rgba(68, 136, 204, 0.8);
+}
+
+/* Action toolbar (right side) */
+.action-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
+}
+
+.action-toolbar button {
+  padding: 6px 12px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
