@@ -5,6 +5,7 @@ import { SketchEditor } from './2d/SketchEditor'
 import { SketchPlane } from './3d/SketchPlane'
 import { HelpPanel } from './util/HelpPanel'
 import { Loft, type RenderMode } from './3d/Loft'
+import { DEFAULT_BUILDING_SIZE } from './constants'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -23,7 +24,7 @@ const sketchEditor = new SketchEditor(container2d)
 
 // Default planes - just the ground floor to start
 const sketchPlanes = [
-  new SketchPlane(1, 0),    // Ground floor
+  new SketchPlane(DEFAULT_BUILDING_SIZE, 0),    // Ground floor
 ]
 
 // Add planes to the 3D viewport.
@@ -145,8 +146,8 @@ function newModel(): void {
   // Remove all existing planes from 3D viewport
   sketchPlanes.forEach(plane => viewport3d.remove(plane.getGroup()))
 
-  // Create a single plane with 1x1 square at ground level
-  const newPlane = new SketchPlane(1, 0)
+  // Create a single plane with default building size at ground level
+  const newPlane = new SketchPlane(DEFAULT_BUILDING_SIZE, 0)
   const newPlanes = [newPlane]
 
   // Add to 3D viewport

@@ -1,7 +1,6 @@
 import * as THREE from 'three'
+import { GRID_SIZE, GRID_SPACING } from '../constants'
 
-const GRID_SIZE = 100        // Total grid extent (±50m from origin)
-const GRID_SPACING = 5       // 5 meters between grid lines
 const GRID_COLOR = 0x444444  // Subtle gray for grid lines
 const AXIS_X_COLOR = 0x884444  // Muted red for X axis
 const AXIS_Y_COLOR = 0x448844  // Muted green for Y/Z axis
