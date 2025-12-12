@@ -3,7 +3,7 @@ import { Viewport3D } from './3d/Viewport3D'
 import { PlaneSelector } from './3d/PlaneSelector'
 import { SketchEditor } from './2d/SketchEditor'
 import { SketchPlane } from './3d/SketchPlane'
-import { HelpBar } from './util/HelpBar'
+import { HelpPanel } from './util/HelpPanel'
 import { Loft, type RenderMode } from './3d/Loft'
 
 // Set up HTML structure
@@ -94,13 +94,13 @@ sketchEditor.setOnVertexDelete((index) => {
 // Select the first plane by default
 planeSelector.selectPlane(sketchPlanes[0])
 
-// Create help bars for each viewport
-new HelpBar([
+// Create help panels for each viewport
+new HelpPanel([
   { key: 'Scroll', action: 'Zoom' },
   { key: 'Right-drag', action: 'Pan' },
   { key: 'Left-drag', action: 'Orbit' },
   { key: 'Drag plane', action: 'Adjust height' },
-  { key: 'Drag ground', action: 'Add floor' },
+  { key: 'Shift-drag', action: 'Copy floor' },
   { key: 'Drag down', action: 'Delete floor' },
 ]).appendTo(container3d)
 
@@ -185,7 +185,7 @@ actionToolbar.addEventListener('click', (e) => {
   }
 })
 
-new HelpBar([
+new HelpPanel([
   { key: 'Scroll', action: 'Zoom' },
   { key: 'Right-drag', action: 'Pan' },
   { key: 'Double-click', action: 'Delete vertex' },
