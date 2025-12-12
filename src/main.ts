@@ -58,6 +58,10 @@ planeSelector.setOnPlaneCreate(() => {
 // Rebuild loft when plane is deleted
 planeSelector.setOnPlaneDelete(() => {
   loft.rebuild(sketchPlanes)
+  // Switch to 'none' mode if down to 1 plane (no loft to show)
+  if (sketchPlanes.length < 2) {
+    setRenderMode('none')
+  }
 })
 
 // Update 3D view when vertices are dragged in 2D editor
@@ -117,6 +121,14 @@ function updateProfileVisibility(mode: RenderMode): void {
   sketchPlanes.forEach(plane => plane.setProfileVisible(showProfiles))
 }
 
+// Set render mode and update UI
+function setRenderMode(mode: RenderMode): void {
+  loft.setRenderMode(mode)
+  updateProfileVisibility(mode)
+  renderToolbar.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
+  renderToolbar.querySelector(`button[data-mode="${mode}"]`)?.classList.add('active')
+}
+
 // Initially hide profiles since we start in 'both' mode
 updateProfileVisibility('both')
 
@@ -125,10 +137,7 @@ renderToolbar.addEventListener('click', (e) => {
   const target = e.target as HTMLElement
   if (target.tagName === 'BUTTON') {
     const mode = target.dataset.mode as RenderMode
-    loft.setRenderMode(mode)
-    updateProfileVisibility(mode)
-    renderToolbar.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
-    target.classList.add('active')
+    setRenderMode(mode)
   }
 })
 
@@ -147,8 +156,8 @@ function newModel(): void {
   // Reset the plane selector with new planes
   planeSelector.reset(newPlanes)
 
-  // Update profile visibility
-  updateProfileVisibility(loft.getRenderMode())
+  // Switch to 'none' mode since there's no loft with 1 plane
+  setRenderMode('none')
 
   // Rebuild loft (will be empty with just 1 plane)
   loft.rebuild(newPlanes)
