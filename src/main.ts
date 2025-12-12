@@ -126,9 +126,6 @@ sketchEditor.setOnVertexDelete((index) => {
   }
 })
 
-// Select the first plane by default
-planeSelector.selectPlane(sketchPlanes[0])
-
 // Create help panels for each viewport
 new HelpPanel([
   { key: 'Scroll', action: 'Zoom' },
@@ -253,6 +250,9 @@ function animate() {
   viewport3d.render()
   sketchEditor.render()
 }
+
+// Select the first plane by default (after all toolbars are initialized)
+planeSelector.selectPlane(sketchPlanes[0])
 
 // Start animation loop!
 animate()
