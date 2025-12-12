@@ -1,6 +1,36 @@
 import * as THREE from 'three'
 
 // ============================================================================
+// Shape Generation
+// ============================================================================
+
+/**
+ * Create a regular polygon with the given number of sides.
+ * @param sides Number of sides (3 = triangle, 4 = square, etc.)
+ * @param size Width/height of the bounding box
+ * @returns Array of vertices in CCW order, centered at origin
+ */
+export function createRegularPolygon(sides: number, size: number): THREE.Vector2[] {
+  if (sides < 3) sides = 3
+  const vertices: THREE.Vector2[] = []
+  const radius = size / 2
+
+  // Start angle: π/2 puts first vertex at top
+  // Offset by π/sides for even-sided polygons to get flat bottom
+  const startAngle = Math.PI / 2 + (sides % 2 === 0 ? Math.PI / sides : 0)
+
+  for (let i = 0; i < sides; i++) {
+    const angle = startAngle + (i * 2 * Math.PI) / sides
+    vertices.push(new THREE.Vector2(
+      radius * Math.cos(angle),
+      radius * Math.sin(angle)
+    ))
+  }
+
+  return vertices
+}
+
+// ============================================================================
 // Polygon Utilities for Lofting
 // ============================================================================
 

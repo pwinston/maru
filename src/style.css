@@ -283,6 +283,53 @@ button:focus-visible {
   border-color: rgba(68, 136, 204, 0.8);
 }
 
+/* Shape toolbar (2D viewport) */
+.shape-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
+}
+
+.shape-toolbar .toolbar-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-right: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.shape-toolbar button {
+  padding: 4px 8px;
+  font-size: 11px;
+  min-width: 28px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.shape-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.shape-toolbar button.active {
+  background: rgba(68, 136, 204, 0.6);
+  color: white;
+  border-color: rgba(68, 136, 204, 0.8);
+}
+
 /* No selection message (2D viewport) */
 .no-selection-message {
   position: absolute;

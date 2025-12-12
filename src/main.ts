@@ -8,6 +8,8 @@ import { Loft } from './3d/Loft'
 import { DEFAULT_BUILDING_SIZE } from './constants'
 import { makeLoftable } from './loft/makeLoftable'
 import { MainToolbar } from './ui/MainToolbar'
+import { SketchToolbar } from './ui/SketchToolbar'
+import { createRegularPolygon } from './util/Geometry'
 
 // Set up HTML structure
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -44,6 +46,25 @@ function rebuildLoft(): void {
   loft.rebuildFromVertices(sketchPlanes, loftableVertices)
 }
 
+// Helper to find the top plane (highest height)
+function getTopPlane(): SketchPlane | null {
+  if (sketchPlanes.length === 0) return null
+  return sketchPlanes.reduce((top, plane) =>
+    plane.getHeight() > top.getHeight() ? plane : top
+  )
+}
+
+// Update roof visibility based on selection and toggle state
+function updateRoofVisibility(): void {
+  const roofEnabled = mainToolbar.isRoofEnabled()
+  const selectedPlane = planeSelector.getSelectedPlane()
+  const topPlane = getTopPlane()
+
+  // Show roof only if enabled AND selected plane is not the top plane
+  const showRoof = roofEnabled && selectedPlane !== topPlane
+  loft.setRoofVisible(showRoof)
+}
+
 rebuildLoft()
 
 const planeSelector = new PlaneSelector(viewport3d, sketchPlanes)
@@ -57,21 +78,25 @@ planeSelector.setOnSelectionChange((plane) => {
     // SketchEditor should show nothing.
     sketchEditor.clear()
   }
+  updateRoofVisibility()
 })
 
 // Rebuild loft when plane height changes
 planeSelector.setOnPlaneHeightChange(() => {
   rebuildLoft()
+  updateRoofVisibility()
 })
 
 // Rebuild loft when new plane is created
 planeSelector.setOnPlaneCreate(() => {
   rebuildLoft()
+  updateRoofVisibility()
 })
 
 // Rebuild loft when plane is deleted
 planeSelector.setOnPlaneDelete(() => {
   rebuildLoft()
+  updateRoofVisibility()
 })
 
 // Update 3D view when vertices are dragged in 2D editor
@@ -130,8 +155,8 @@ mainToolbar.setOnWallsChange((visible) => {
   loft.setSolidVisible(visible)
 })
 
-mainToolbar.setOnRoofChange((visible) => {
-  loft.setRoofVisible(visible)
+mainToolbar.setOnRoofChange(() => {
+  updateRoofVisibility()
 })
 
 mainToolbar.setOnWireframeChange((mode) => {
@@ -191,29 +216,21 @@ new HelpPanel([
   { key: 'Double-click', action: 'Delete vertex' },
 ]).appendTo(container2d)
 
-// Create orientation toolbar for 2D viewport
-const orientationToolbar = document.createElement('div')
-orientationToolbar.className = 'orientation-toolbar'
-orientationToolbar.innerHTML = `
-  <button data-mode="fixed" class="active">Fixed</button>
-  <button data-mode="rotate">Rotate</button>
-`
-container2d.appendChild(orientationToolbar)
+// Create sketch toolbar for 2D viewport
+const sketchToolbar = new SketchToolbar(container2d)
 
-// Orientation mode state
-let orientationMode: 'fixed' | 'rotate' = 'fixed'
+sketchToolbar.setOnOrientationChange((mode) => {
+  if (mode === 'fixed') {
+    sketchEditor.setRotation(0)
+  }
+})
 
-// Handle orientation toolbar button clicks
-orientationToolbar.addEventListener('click', (e) => {
-  const target = e.target as HTMLElement
-  if (target.tagName === 'BUTTON') {
-    orientationMode = target.dataset.mode as 'fixed' | 'rotate'
-    orientationToolbar.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
-    target.classList.add('active')
-    // Reset rotation when switching to fixed
-    if (orientationMode === 'fixed') {
-      sketchEditor.setRotation(0)
-    }
+sketchToolbar.setOnShapeSelect((sides) => {
+  const selectedPlane = planeSelector.getSelectedPlane()
+  if (selectedPlane) {
+    const vertices = createRegularPolygon(sides, DEFAULT_BUILDING_SIZE)
+    selectedPlane.setVertices(vertices)
+    rebuildLoft()
   }
 })
 
@@ -228,7 +245,7 @@ function animate() {
   requestAnimationFrame(animate)
 
   // Update 2D sketch rotation if in rotate mode
-  if (orientationMode === 'rotate') {
+  if (sketchToolbar.getOrientationMode() === 'rotate') {
     sketchEditor.setRotation(viewport3d.getCameraAzimuth())
   }
 

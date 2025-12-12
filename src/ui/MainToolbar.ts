@@ -109,4 +109,11 @@ export class MainToolbar {
   setOnWireframeChange(callback: (mode: WireframeMode) => void): void {
     this.onWireframeChange = callback
   }
+
+  /**
+   * Check if roof toggle is enabled
+   */
+  isRoofEnabled(): boolean {
+    return this.toggleState.roof
+  }
 }
