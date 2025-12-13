@@ -25,12 +25,7 @@ export function makeLoftable(
   const algorithm = getLoftAlgorithm(name)
 
   if (!algorithm) {
-    console.warn(`Unknown loft algorithm: ${name}, using uniform`)
-    const fallback = getLoftAlgorithm('uniform')
-    if (!fallback) {
-      throw new Error('No loft algorithms registered')
-    }
-    return fallback(planes.map(p => p.getSketch()))
+    throw new Error(`Unknown loft algorithm: ${name}`)
   }
 
   return algorithm(planes.map(p => p.getSketch()))
