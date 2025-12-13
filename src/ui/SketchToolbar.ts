@@ -24,9 +24,9 @@ export class SketchToolbar {
     this.shapeElement = document.createElement('div')
     this.shapeElement.className = 'shape-toolbar'
     this.shapeElement.innerHTML = `
-      <span class="toolbar-label">Shape</span>
+      <span class="toolbar-label">Sides</span>
       <button data-sides="3">3</button>
-      <button data-sides="4" class="active">4</button>
+      <button data-sides="4">4</button>
       <button data-sides="5">5</button>
       <button data-sides="6">6</button>
       <button data-sides="7">7</button>
@@ -59,11 +59,6 @@ export class SketchToolbar {
     if (target.tagName !== 'BUTTON' || !target.dataset.sides) return
 
     const sides = parseInt(target.dataset.sides, 10)
-
-    // Update active state
-    this.shapeElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
-    target.classList.add('active')
-
     this.onShapeSelect?.(sides)
   }
 
