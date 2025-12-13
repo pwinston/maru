@@ -17,11 +17,6 @@ revert it. For this project I'm using branches like this:
 1. `dev` is rapid iteration with Claude Code.
 2. PRs into `main` only when well-understood and cleaned up.
 
-# Planning
-
-I created README.md and wrote my version of the spec/requirements. I used
-ChatGPT to discuss which libraries to use and what the general UI should look
-like. I added all decisions to the README.
 
 # PRs
 
@@ -77,3 +72,10 @@ like. I added all decisions to the README.
 5. Display walls as triangles or quads
 6. Add "instant shape" buttons for 3 through 100 sides
 ![](images/08.jpg)
+
+## Much better vertex correspondence: perimeter walk ([PR #9](https://github.com/pwinston/maru/pull/9))    
+1. New better vertex correspondence: perimeter walk
+2. Remove multi-loft-algorithm stuff, just use the one
+3. Wireframe menu is now "On" or "Tris"
+4. Tris shown in another color and dashed
+![](images/09.jpg)

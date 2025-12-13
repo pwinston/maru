@@ -1,13 +1,20 @@
+/**
+ * Loft.ts
+ *
+ * Creates a 3D mesh by lofting through sketch planes at different heights.
+ * Renders quads and triangles from the loft algorithm output.
+ */
+
 import * as THREE from 'three'
-import { SketchPlane } from './SketchPlane'
 import { LOFT } from '../constants'
 import { triangulatePolygon } from '../util/Geometry'
+import { LoftableModel } from '../loft/LoftableModel'
+import type { LoftFace } from '../loft/LoftAlgorithm'
 
-export type WireframeMode = 'off' | 'triangles' | 'quads'
+export type WireframeMode = 'off' | 'on' | 'tris'
 
 /**
  * Creates a 3D mesh by lofting through sketch planes at different heights.
- * Connects corresponding vertices between planes with triangulated quads.
  */
 export class Loft {
   private mesh: THREE.Mesh | null = null
@@ -86,20 +93,17 @@ export class Loft {
       this.roofMesh.visible = this.roofVisible
     }
     if (this.wireframeQuads) {
-      this.wireframeQuads.visible = this.wireframeMode === 'quads'
+      this.wireframeQuads.visible = this.wireframeMode === 'on' || this.wireframeMode === 'tris'
     }
     if (this.wireframeTris) {
-      this.wireframeTris.visible = this.wireframeMode === 'triangles'
+      this.wireframeTris.visible = this.wireframeMode === 'tris'
     }
   }
 
   /**
-   * Rebuild the loft using pre-computed loftable vertices.
-   * This bypasses the vertex count check since vertices are already matched.
-   * @param planes The original sketch planes (for height information)
-   * @param loftableVertices Pre-resampled vertex arrays, all with same count
+   * Rebuild the loft from a LoftableModel.
    */
-  rebuildFromVertices(planes: SketchPlane[], loftableVertices: THREE.Vector2[][]): void {
+  rebuildFromModel(model: LoftableModel): void {
     // Clear existing geometry
     this.group.clear()
     this.mesh = null
@@ -107,38 +111,33 @@ export class Loft {
     this.wireframeQuads = null
     this.wireframeTris = null
 
-    if (planes.length < 2) return
-    if (loftableVertices.length !== planes.length) {
-      console.warn('Loft: vertices array count must match planes count')
-      return
+    if (model.segments.length === 0) return
+
+    // Collect all faces from all segments
+    const allFaces: LoftFace[] = []
+    for (const segment of model.segments) {
+      allFaces.push(...segment.faces)
     }
 
-    // Verify all vertex arrays have the same count
-    const counts = loftableVertices.map(v => v.length)
-    if (!counts.every(c => c === counts[0])) {
-      console.warn('Loft: all loftable vertex arrays must have the same count')
-      return
-    }
+    if (allFaces.length === 0) return
 
-    // Sort planes by height, reorder vertices to match
-    const indexed = planes.map((p, i) => ({ height: p.getHeight(), index: i }))
-    indexed.sort((a, b) => a.height - b.height)
-
-    const sortedPlanes = indexed.map(item => planes[item.index])
-    const sortedVertices = indexed.map(item => loftableVertices[item.index])
-
-    // Build wall geometry (without roof)
-    const wallGeometry = this.buildWallGeometry(sortedPlanes, sortedVertices)
+    // Build wall geometry from faces
+    const wallGeometry = this.buildGeometryFromFaces(allFaces)
     if (!wallGeometry) return
 
-    // Build roof geometry separately
-    const roofGeometry = this.buildRoofGeometry(sortedPlanes, sortedVertices)
+    // Build roof geometry
+    const roofVerts = model.getRoofVertices()
+    const roofHeight = model.getRoofHeight()
+    const roofGeometry = roofVerts ? this.buildRoofGeometry(roofVerts, roofHeight) : null
 
     // Create wall mesh
     const material = new THREE.MeshStandardMaterial({
       color: LOFT.SOLID_COLOR,
       side: THREE.DoubleSide,
       flatShading: false,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     })
     this.mesh = new THREE.Mesh(wallGeometry, material)
     this.group.add(this.mesh)
@@ -149,114 +148,63 @@ export class Loft {
       this.group.add(this.roofMesh)
     }
 
-    // Create both wireframe types (walls only for triangles, include roof outline for quads)
+    // Create wireframe geometries
     const wireMaterial = new THREE.LineBasicMaterial({ color: LOFT.WIRE_COLOR })
 
-    // Quad wireframe (without triangle diagonals)
-    const quadWireGeometry = this.buildQuadWireframeFromVertices(sortedPlanes, sortedVertices)
+    // Quad wireframe (face edges only, no triangle diagonals)
+    const quadWireGeometry = this.buildQuadWireframeFromFaces(allFaces)
     this.wireframeQuads = new THREE.LineSegments(quadWireGeometry, wireMaterial)
     this.group.add(this.wireframeQuads)
 
-    // Triangle wireframe (all edges including diagonals) - walls only
-    const triWireGeometry = new THREE.WireframeGeometry(wallGeometry)
-    this.wireframeTris = new THREE.LineSegments(triWireGeometry, wireMaterial.clone())
+    // Diagonal wireframe (only the triangulation edges that split quads)
+    const diagWireGeometry = this.buildDiagonalWireframeFromFaces(allFaces)
+    const diagMaterial = new THREE.LineDashedMaterial({
+      color: LOFT.DIAGONAL_WIRE_COLOR,
+      dashSize: 0.3,
+      gapSize: 0.15,
+    })
+    this.wireframeTris = new THREE.LineSegments(diagWireGeometry, diagMaterial)
+    this.wireframeTris.computeLineDistances() // Required for dashed lines
     this.group.add(this.wireframeTris)
 
     this.updateVisibility()
   }
 
   /**
-   * Build quad wireframe from pre-computed vertices.
+   * Build geometry from faces (quads and triangles).
+   * Quads are split into two triangles for rendering.
    */
-  private buildQuadWireframeFromVertices(
-    sortedPlanes: SketchPlane[],
-    sortedVertices: THREE.Vector2[][]
-  ): THREE.BufferGeometry {
-    const numPlanes = sortedPlanes.length
-    const numVerticesPerPlane = sortedVertices[0].length
+  private buildGeometryFromFaces(faces: LoftFace[]): THREE.BufferGeometry | null {
+    if (faces.length === 0) return null
 
-    // Convert 2D to 3D coordinates
-    const allVertices: THREE.Vector3[][] = []
-    for (let p = 0; p < numPlanes; p++) {
-      const height = sortedPlanes[p].getHeight()
-      const verts2d = sortedVertices[p]
-      const verts3d = verts2d.map(v => new THREE.Vector3(v.x, height, -v.y))
-      allVertices.push(verts3d)
-    }
-
-    const linePositions: number[] = []
-
-    // Horizontal edges (polygon outline on each plane)
-    for (let p = 0; p < numPlanes; p++) {
-      for (let v = 0; v < numVerticesPerPlane; v++) {
-        const nextV = (v + 1) % numVerticesPerPlane
-        const v1 = allVertices[p][v]
-        const v2 = allVertices[p][nextV]
-        linePositions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z)
-      }
-    }
-
-    // Vertical edges (connecting corresponding vertices between adjacent planes)
-    for (let p = 0; p < numPlanes - 1; p++) {
-      for (let v = 0; v < numVerticesPerPlane; v++) {
-        const v1 = allVertices[p][v]
-        const v2 = allVertices[p + 1][v]
-        linePositions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z)
-      }
-    }
-
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3))
-    return geometry
-  }
-
-  /**
-   * Build wall geometry from pre-computed vertices (no roof).
-   */
-  private buildWallGeometry(
-    sortedPlanes: SketchPlane[],
-    sortedVertices: THREE.Vector2[][]
-  ): THREE.BufferGeometry | null {
-    const numPlanes = sortedPlanes.length
-    const numVerticesPerPlane = sortedVertices[0].length
-
-    if (numVerticesPerPlane === 0) return null
-
-    // Convert 2D to 3D coordinates
-    const allVertices: THREE.Vector3[][] = []
-    for (let p = 0; p < numPlanes; p++) {
-      const height = sortedPlanes[p].getHeight()
-      const verts2d = sortedVertices[p]
-      const verts3d = verts2d.map(v => new THREE.Vector3(v.x, height, -v.y))
-      allVertices.push(verts3d)
-    }
-
-    // Build triangles for walls only
     const positions: number[] = []
     const indices: number[] = []
 
-    for (let p = 0; p < numPlanes; p++) {
-      for (let v = 0; v < numVerticesPerPlane; v++) {
-        const vert = allVertices[p][v]
-        positions.push(vert.x, vert.y, vert.z)
+    for (const face of faces) {
+      const verts = face.vertices
+      const baseIndex = positions.length / 3
+
+      // Add vertices (convert from our coordinate system to Three.js)
+      // Our: x=right, y=forward, z=up
+      // Three.js: x=right, y=up, z=-forward
+      for (const v of verts) {
+        positions.push(v.x, v.z, -v.y)
+      }
+
+      if (verts.length === 3) {
+        // Triangle
+        indices.push(baseIndex, baseIndex + 1, baseIndex + 2)
+      } else if (verts.length === 4) {
+        // Quad - split into two triangles
+        // Vertices are in order: a0, a1, b1, b0 (see FaceBuilder.addQuad)
+        // Triangle 1: a0, a1, b1
+        // Triangle 2: a0, b1, b0
+        indices.push(baseIndex, baseIndex + 1, baseIndex + 2)
+        indices.push(baseIndex, baseIndex + 2, baseIndex + 3)
       }
     }
 
-    for (let p = 0; p < numPlanes - 1; p++) {
-      const baseIndex = p * numVerticesPerPlane
-      const nextBaseIndex = (p + 1) * numVerticesPerPlane
-
-      for (let v = 0; v < numVerticesPerPlane; v++) {
-        const nextV = (v + 1) % numVerticesPerPlane
-        const bl = baseIndex + v
-        const br = baseIndex + nextV
-        const tl = nextBaseIndex + v
-        const tr = nextBaseIndex + nextV
-
-        indices.push(bl, br, tr)
-        indices.push(bl, tr, tl)
-      }
-    }
+    if (positions.length === 0) return null
 
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
@@ -267,26 +215,66 @@ export class Loft {
   }
 
   /**
-   * Build roof geometry from top plane vertices.
+   * Build wireframe showing only the diagonal edges that split quads into triangles.
    */
-  private buildRoofGeometry(
-    sortedPlanes: SketchPlane[],
-    sortedVertices: THREE.Vector2[][]
-  ): THREE.BufferGeometry | null {
-    const numPlanes = sortedPlanes.length
-    const topHeight = sortedPlanes[numPlanes - 1].getHeight()
-    const topVerts2d = sortedVertices[numPlanes - 1]
+  private buildDiagonalWireframeFromFaces(faces: LoftFace[]): THREE.BufferGeometry {
+    const linePositions: number[] = []
 
-    if (topVerts2d.length < 3) return null
-
-    // Convert to 3D
-    const positions: number[] = []
-    for (const v of topVerts2d) {
-      positions.push(v.x, topHeight, -v.y)
+    for (const face of faces) {
+      const verts = face.vertices
+      // Only quads have a diagonal - triangles don't need splitting
+      if (verts.length === 4) {
+        // The diagonal goes from vertex 0 to vertex 2 (see buildGeometryFromFaces)
+        const v1 = verts[0]
+        const v2 = verts[2]
+        linePositions.push(v1.x, v1.z, -v1.y)
+        linePositions.push(v2.x, v2.z, -v2.y)
+      }
     }
 
-    // Triangulate
-    const roofTriangles = triangulatePolygon(topVerts2d)
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3))
+    return geometry
+  }
+
+  /**
+   * Build wireframe showing face edges (quads shown as quads, not triangulated).
+   */
+  private buildQuadWireframeFromFaces(faces: LoftFace[]): THREE.BufferGeometry {
+    const linePositions: number[] = []
+
+    for (const face of faces) {
+      const verts = face.vertices
+      const n = verts.length
+
+      // Draw edges of the face (closed loop)
+      for (let i = 0; i < n; i++) {
+        const v1 = verts[i]
+        const v2 = verts[(i + 1) % n]
+
+        // Convert coordinates
+        linePositions.push(v1.x, v1.z, -v1.y)
+        linePositions.push(v2.x, v2.z, -v2.y)
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3))
+    return geometry
+  }
+
+  /**
+   * Build roof geometry from 2D vertices.
+   */
+  private buildRoofGeometry(vertices: THREE.Vector2[], height: number): THREE.BufferGeometry | null {
+    if (vertices.length < 3) return null
+
+    const positions: number[] = []
+    for (const v of vertices) {
+      positions.push(v.x, height, -v.y)
+    }
+
+    const roofTriangles = triangulatePolygon(vertices)
     if (roofTriangles.length === 0) return null
 
     const geometry = new THREE.BufferGeometry()

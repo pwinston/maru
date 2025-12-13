@@ -59,9 +59,8 @@ export const PLANE = {
 // Loft rendering
 export const LOFT = {
   SOLID_COLOR: 0x4488cc,
-  WIRE_COLOR: 0xdddddd,  // Light gray wireframe
-  DEFAULT_ALGORITHM: 'anchor-resample' as string,
-  ANCHOR_EPSILON: 0.5,  // Max distance for anchor matching (meters)
+  WIRE_COLOR: 0xdddddd,  // Light gray wireframe for quad edges
+  DIAGONAL_WIRE_COLOR: 0xff8844,  // Orange dashed for triangulation diagonals
 }
 
 // Interaction thresholds

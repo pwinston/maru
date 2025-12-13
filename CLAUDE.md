@@ -5,7 +5,9 @@
 See README.md for project overview file descriptions.
 See CHANGELOG.md for implementation history.
 
-## Permissions
+## Claude Permissions
 
-You may edit an file which is in the workspace, which is in git.
+You may edit any file which is in the git repo without asking.
+You may execute any command which is 100% read-only without asking.
+Ask before executing other commands every time.
 

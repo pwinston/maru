@@ -19,6 +19,7 @@ export class MainToolbar {
   constructor(container: HTMLElement) {
     this.element = document.createElement('div')
     this.element.className = 'main-toolbar'
+
     this.element.innerHTML = `
       <div class="toolbar-section">
         <button data-toggle="planes" class="toggle active">Planes</button>
@@ -28,8 +29,8 @@ export class MainToolbar {
       <div class="toolbar-section">
         <span class="toolbar-label">Wireframe</span>
         <button data-wire="off" class="active">Off</button>
-        <button data-wire="triangles">Tri</button>
-        <button data-wire="quads">Quad</button>
+        <button data-wire="on">On</button>
+        <button data-wire="tris">Tris</button>
       </div>
     `
     container.appendChild(this.element)

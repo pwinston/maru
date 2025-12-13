@@ -6,7 +6,7 @@ import { SketchPlane } from './3d/SketchPlane'
 import { HelpPanel } from './util/HelpPanel'
 import { Loft } from './3d/Loft'
 import { DEFAULT_BUILDING_SIZE } from './constants'
-import { makeLoftable } from './loft/makeLoftable'
+import { LoftableModel } from './loft/LoftableModel'
 import { MainToolbar } from './ui/MainToolbar'
 import { SketchToolbar } from './ui/SketchToolbar'
 import { createRegularPolygon } from './util/Geometry'
@@ -40,10 +40,13 @@ sketchPlanes.forEach(plane => {
 const loft = new Loft()
 viewport3d.add(loft.getGroup())
 
-// Helper function to rebuild loft with vertex resampling
+// Create main toolbar (needed by rebuildLoft and updateRoofVisibility)
+const mainToolbar = new MainToolbar(container3d)
+
+// Helper function to rebuild loft
 function rebuildLoft(): void {
-  const loftableVertices = makeLoftable(sketchPlanes)
-  loft.rebuildFromVertices(sketchPlanes, loftableVertices)
+  const model = LoftableModel.fromPlanes(sketchPlanes)
+  loft.rebuildFromModel(model)
 }
 
 // Helper to find the top plane (highest height)
@@ -136,9 +139,6 @@ new HelpPanel([
   { key: 'Drag down', action: 'Delete floor' },
 ]).appendTo(container3d)
 
-// Create main toolbar
-const mainToolbar = new MainToolbar(container3d)
-
 // Wire up toolbar callbacks
 mainToolbar.setOnPlanesChange((visible) => {
   sketchPlanes.forEach(plane => plane.getGroup().visible = visible)
@@ -159,6 +159,7 @@ mainToolbar.setOnRoofChange(() => {
 mainToolbar.setOnWireframeChange((mode) => {
   loft.setWireframeMode(mode)
 })
+
 
 // Reset to a single 1x1 square plane at ground level
 function newModel(): void {
