@@ -36,13 +36,17 @@ export const LIGHTING = {
 // Sketch editor (2D vertex/segment interaction)
 export const SKETCH = {
   VERTEX_SCREEN_PX: 12,         // Target vertex size in screen pixels
-  VERTEX_COLOR: 0xffff00,
+  VERTEX_COLOR: 0xffffff,       // White for normal vertices
+  SELECTED_COLOR: 0xffff00,     // Yellow for selected vertices
   LINE_COLOR: 0x00ff00,
   GHOST_SCREEN_PX: 10,          // Target ghost vertex size in screen pixels
   GHOST_VERTEX_COLOR: 0x88ff88,
   DELETE_COLOR: 0xff0000,
   SEGMENT_HIT_WIDTH: 0.3,
   VERTEX_SAFE_ZONE: 0.25,
+  SELECTION_RECT_COLOR: 0xffffff,
+  SELECTION_RECT_OPACITY: 0.15,
+  SELECTION_RECT_EDGE_COLOR: 0xffff00,
 }
 
 // Sketch plane (3D plane visuals)

@@ -1,5 +1,10 @@
 import * as THREE from 'three'
 import { Sketch } from './Sketch'
+import { SelectionHandles } from './SelectionHandles'
+import type { HandleType } from './SelectionHandles'
+import type { EditorTool } from './EditorTool'
+import { SweepSelection } from './SweepSelection'
+import { TransformTool } from './TransformTool'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
 import { createGrid } from '../util/GridHelper'
 import { GRID, VIEWPORT_2D, SKETCH } from '../constants'
@@ -36,6 +41,13 @@ export class SketchEditor {
 
   // No selection message overlay
   private noSelectionMessage: HTMLDivElement
+
+  // Active editor tool (sweep selection, transform, etc.)
+  private activeTool: EditorTool | null = null
+
+  // Selection handles
+  private selectionHandles: SelectionHandles
+  private activeHandle: HandleType = 'none'
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -75,6 +87,10 @@ export class SketchEditor {
     this.deletePreviewMarker.visible = false
     this.deletePreviewMarker.position.z = 0.03 // Above everything
     this.scene.add(this.deletePreviewMarker)
+
+    // Create selection handles for scale/rotate
+    this.selectionHandles = new SelectionHandles()
+    this.scene.add(this.selectionHandles.getGroup())
 
     // Create orthographic camera for 2D view
     const aspect = container.clientWidth / container.clientHeight
@@ -172,7 +188,22 @@ export class SketchEditor {
     const ndc = this.getMouseNDC(event)
     this.raycaster.setFromCamera(ndc, this.camera)
 
-    // First check vertices (they have priority)
+    // First check selection handles (they have highest priority)
+    if (this.selectionHandles.isVisible()) {
+      const handleMeshes = this.selectionHandles.getHandleMeshes()
+      const handleIntersects = this.raycaster.intersectObjects(handleMeshes)
+
+      if (handleIntersects.length > 0) {
+        const mesh = handleIntersects[0].object as THREE.Mesh
+        this.activeHandle = this.selectionHandles.getHandleType(mesh)
+        this.setupTransformTool(event)
+        this.selectionHandles.hide()  // Hide handles during manipulation
+        this.container.style.cursor = this.activeHandle === 'rotate' ? 'grab' : 'ns-resize'
+        return
+      }
+    }
+
+    // Check vertices
     const vertexMeshes = this.currentSketch.getVertexMeshes()
     const vertexIntersects = this.raycaster.intersectObjects(vertexMeshes)
 
@@ -183,12 +214,83 @@ export class SketchEditor {
         this.draggedVertexIndex = index
         this.isDeletingVertex = false  // Reset delete state
         this.container.style.cursor = 'grabbing'
+
+        // If clicking a selected vertex, prepare to drag all selected vertices
+        if (this.currentSketch.isSelected(index)) {
+          this.setupTransformTool(event)
+        } else {
+          // Clicking unselected vertex clears selection and selects this vertex
+          this.currentSketch.clearSelection()
+          this.currentSketch.selectVertex(index)
+        }
       }
       return
     }
 
     // Check if clicking on a segment to insert a vertex
-    this.tryInsertVertex(event)
+    if (this.hoveredSegmentIndex !== null) {
+      this.currentSketch.clearSelection()
+      this.tryInsertVertex(event)
+      return
+    }
+
+    // Clicking on empty space - start sweep selection
+    this.startSweepSelection(event)
+  }
+
+  /**
+   * Set up transform tool for multi-vertex operations
+   */
+  private setupTransformTool(event: MouseEvent): void {
+    if (!this.currentSketch) return
+
+    const selectedIndices = this.currentSketch.getSelectedIndices()
+    if (selectedIndices.length <= 1) return  // Single vertex drag handled normally
+
+    const vertices = this.currentSketch.getVertices()
+    const mousePos = this.getWorldPosition(event)
+
+    // Determine transform mode from activeHandle
+    const mode = this.activeHandle === 'rotate' ? 'rotate'
+               : this.activeHandle === 'scale' ? 'scale'
+               : 'translate'
+
+    this.activeTool = new TransformTool(vertices, selectedIndices, mousePos, mode)
+  }
+
+  /**
+   * Start sweep selection tool
+   */
+  private startSweepSelection(event: MouseEvent): void {
+    if (!this.currentSketch) return
+    this.currentSketch.clearSelection()
+    this.activeTool = new SweepSelection(this.scene, this.getWorldPosition(event))
+  }
+
+  /**
+   * Apply results from a tool operation
+   */
+  private applyToolResult(result: import('./EditorTool').ToolResult): void {
+    if (!this.currentSketch) return
+
+    // Apply position changes
+    if (result.positions && this.onVertexChange) {
+      for (const [index, newPos] of result.positions) {
+        this.onVertexChange(index, newPos)
+      }
+    }
+
+    // Apply selection rectangle
+    if (result.selectInRect) {
+      this.currentSketch.selectVerticesInRect(result.selectInRect.min, result.selectInRect.max)
+    }
+
+    // Clean up if tool is done
+    if (result.done) {
+      this.activeTool?.dispose()
+      this.activeTool = null
+      this.updateSelectionHandles()
+    }
   }
 
   /**
@@ -214,6 +316,9 @@ export class SketchEditor {
     // Start dragging the newly inserted vertex
     this.draggedVertexIndex = newVertexIndex
     this.container.style.cursor = 'grabbing'
+
+    // Highlight the newly inserted vertex yellow while dragging
+    this.currentSketch.setVertexColor(newVertexIndex, SKETCH.SELECTED_COLOR)
 
     this.ghostVertex.visible = false
     this.hoveredSegmentIndex = null
@@ -247,7 +352,16 @@ export class SketchEditor {
 
     if (!this.currentSketch) return
 
+    // Handle active tool (sweep selection, transform, etc.)
+    if (this.activeTool) {
+      const result = this.activeTool.onMouseMove(this.getWorldPosition(event))
+      this.applyToolResult(result)
+      return
+    }
+
     if (this.draggedVertexIndex !== null) {
+
+      // Single vertex drag
       const worldPos = this.getWorldPosition(event)
       const vertices = this.currentSketch.getVertices()
       const canDelete = vertices.length > 3
@@ -361,6 +475,15 @@ export class SketchEditor {
       return
     }
 
+    // Handle active tool completion
+    if (this.activeTool) {
+      const result = this.activeTool.onMouseUp(this.getWorldPosition(event))
+      this.applyToolResult(result)
+      this.activeHandle = 'none'
+      this.container.style.cursor = 'default'
+      return
+    }
+
     // Handle vertex deletion if we were in delete mode
     if (this.draggedVertexIndex !== null && this.isDeletingVertex) {
       if (this.onVertexDelete) {
@@ -432,6 +555,29 @@ export class SketchEditor {
     }
     this.ghostVertex.scale.set(ghostScale, ghostScale, 1)
     this.deletePreviewMarker.scale.set(ghostScale, ghostScale, 1)
+
+    // Update selection handles size
+    this.selectionHandles.setHandleSize(vertexScale)
+    this.updateSelectionHandles()
+  }
+
+  /**
+   * Update selection handles to match current selection
+   */
+  private updateSelectionHandles(): void {
+    if (!this.currentSketch) {
+      this.selectionHandles.hide()
+      return
+    }
+
+    const selectedIndices = this.currentSketch.getSelectedIndices()
+    if (selectedIndices.length < 2) {
+      this.selectionHandles.hide()
+      return
+    }
+
+    const vertices = this.currentSketch.getVertices()
+    this.selectionHandles.update(vertices, selectedIndices)
   }
 
   /**

@@ -13,6 +13,7 @@ export class Sketch {
   private vertexMeshes: THREE.Mesh[] = []
   private segmentHitMeshes: THREE.Mesh[] = []
   private currentScale: number = 1  // Remembered scale for auto-apply on rebuild
+  private selectedVertices: Set<number> = new Set()
 
   constructor(vertices: THREE.Vector2[]) {
     this.vertices = vertices.map(v => v.clone())
@@ -56,6 +57,18 @@ export class Sketch {
     }
 
     this.applyVertexScale()
+    this.applySelectionColors()
+  }
+
+  /**
+   * Reapply selection colors after rebuild
+   */
+  private applySelectionColors(): void {
+    for (const index of this.selectedVertices) {
+      if (index < this.vertexMeshes.length) {
+        this.setVertexColor(index, SKETCH.SELECTED_COLOR)
+      }
+    }
   }
 
   /**
@@ -177,6 +190,16 @@ export class Sketch {
    */
   insertVertex(segmentIndex: number, position: THREE.Vector2): void {
     if (segmentIndex < 0 || segmentIndex >= this.vertices.length) return
+    // Adjust selection indices for vertices after the insertion point
+    const newSelection = new Set<number>()
+    for (const idx of this.selectedVertices) {
+      if (idx > segmentIndex) {
+        newSelection.add(idx + 1)
+      } else {
+        newSelection.add(idx)
+      }
+    }
+    this.selectedVertices = newSelection
     // Insert after segmentIndex (which is the start of the segment)
     this.vertices.splice(segmentIndex + 1, 0, position.clone())
     this.rebuild()
@@ -188,6 +211,17 @@ export class Sketch {
   deleteVertex(index: number): boolean {
     if (this.vertices.length <= 3) return false
     if (index < 0 || index >= this.vertices.length) return false
+    // Adjust selection indices: remove deleted vertex, shift higher indices down
+    const newSelection = new Set<number>()
+    for (const idx of this.selectedVertices) {
+      if (idx < index) {
+        newSelection.add(idx)
+      } else if (idx > index) {
+        newSelection.add(idx - 1)
+      }
+      // idx === index is removed (deleted vertex)
+    }
+    this.selectedVertices = newSelection
     this.vertices.splice(index, 1)
     this.rebuild()
     return true
@@ -255,6 +289,67 @@ export class Sketch {
    */
   setVertexDeleting(index: number): void {
     this.setVertexColor(index, SKETCH.DELETE_COLOR)
+  }
+
+  /**
+   * Select a vertex (adds to selection set and colors it blue)
+   */
+  selectVertex(index: number): void {
+    if (index >= 0 && index < this.vertices.length) {
+      this.selectedVertices.add(index)
+      this.setVertexColor(index, SKETCH.SELECTED_COLOR)
+    }
+  }
+
+  /**
+   * Deselect a vertex (removes from selection set and restores yellow)
+   */
+  deselectVertex(index: number): void {
+    this.selectedVertices.delete(index)
+    this.resetVertexColor(index)
+  }
+
+  /**
+   * Clear all vertex selection
+   */
+  clearSelection(): void {
+    for (const index of this.selectedVertices) {
+      this.resetVertexColor(index)
+    }
+    this.selectedVertices.clear()
+  }
+
+  /**
+   * Check if a vertex is selected
+   */
+  isSelected(index: number): boolean {
+    return this.selectedVertices.has(index)
+  }
+
+  /**
+   * Get all selected vertex indices
+   */
+  getSelectedIndices(): number[] {
+    return Array.from(this.selectedVertices)
+  }
+
+  /**
+   * Select all vertices within a rectangle (in world coordinates)
+   */
+  selectVerticesInRect(min: THREE.Vector2, max: THREE.Vector2): void {
+    for (let i = 0; i < this.vertices.length; i++) {
+      const v = this.vertices[i]
+      if (v.x >= min.x && v.x <= max.x && v.y >= min.y && v.y <= max.y) {
+        this.selectVertex(i)
+      }
+    }
+  }
+
+  /**
+   * Get the number of selected vertices
+   */
+  getSelectionCount(): number {
+    return this.selectedVertices.size
   }
 
   /**
