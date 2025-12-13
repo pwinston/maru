@@ -141,7 +141,8 @@ fans radiating from single vertices.
 
 The algorithm uses **per-edge adaptive subdivision**: for each edge, it counts how many
 vertices from the other loop fall within that edge's parameter range. If an edge spans
-N ≥ 2 vertices, N-1 intermediate points are inserted on that edge.
+N ≥ 3 vertices, N-1 intermediate points are inserted on that edge. Small mismatches
+(2 vertices per edge) are handled naturally by the perimeter walk without subdivision.
 
 Example: Square edge spanning 5 circle vertices
 - Edge parameter range: [0.0, 0.25] (one side of square)
@@ -157,7 +158,7 @@ This approach is smarter than global subdivision because:
 **Future: Per-segment options**
 
 The subdivision behavior can be customized with options:
-- `threshold`: minimum vertices to trigger subdivision (default: 2)
+- `threshold`: minimum vertices to trigger subdivision (default: 3)
 - `maxPerEdge`: cap on intermediate points per edge (default: unlimited)
 - `enabled`: turn subdivision on/off entirely
 

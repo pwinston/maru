@@ -444,7 +444,7 @@ export interface AdaptiveSubdivisionOptions {
 }
 
 const DEFAULT_SUBDIVISION_OPTIONS: AdaptiveSubdivisionOptions = {
-  threshold: 2,
+  threshold: 3,  // Only subdivide edges spanning 3+ vertices; small mismatches handled naturally
   maxPerEdge: Infinity,
   enabled: true,
 }
