@@ -43,8 +43,8 @@ export class MainToolbar {
       <div class="toolbar-section">
         <span class="toolbar-label">Wireframe</span>
         <button data-wire="off" class="active">Off</button>
-        <button data-wire="triangles">Tri</button>
-        <button data-wire="quads">Quad</button>
+        <button data-wire="normal">Normal</button>
+        <button data-wire="tris">Tris</button>
       </div>
       <div class="toolbar-section">
         <span class="toolbar-label">Algorithm</span>

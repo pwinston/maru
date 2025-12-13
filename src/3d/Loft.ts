@@ -11,7 +11,7 @@ import { triangulatePolygon } from '../util/Geometry'
 import { LoftableModel } from '../loft/LoftableModel'
 import type { LoftFace } from '../loft/LoftAlgorithm'
 
-export type WireframeMode = 'off' | 'triangles' | 'quads'
+export type WireframeMode = 'off' | 'normal' | 'tris'
 
 /**
  * Creates a 3D mesh by lofting through sketch planes at different heights.
@@ -93,10 +93,10 @@ export class Loft {
       this.roofMesh.visible = this.roofVisible
     }
     if (this.wireframeQuads) {
-      this.wireframeQuads.visible = this.wireframeMode === 'quads'
+      this.wireframeQuads.visible = this.wireframeMode === 'normal'
     }
     if (this.wireframeTris) {
-      this.wireframeTris.visible = this.wireframeMode === 'triangles'
+      this.wireframeTris.visible = this.wireframeMode === 'tris'
     }
   }
 
