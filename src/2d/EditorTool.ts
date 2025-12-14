@@ -6,8 +6,8 @@ import * as THREE from 'three'
 export interface ToolResult {
   /** New vertex positions to apply */
   positions?: Map<number, THREE.Vector2>
-  /** Vertices to select (for sweep selection) */
-  selectInRect?: { min: THREE.Vector2; max: THREE.Vector2 }
+  /** Vertices to select (for sweep selection). Rotation transforms world coords to screen-aligned coords. */
+  selectInRect?: { min: THREE.Vector2; max: THREE.Vector2; rotation: number }
   /** Tool is finished and should be disposed */
   done?: boolean
 }

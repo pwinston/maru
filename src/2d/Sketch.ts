@@ -334,12 +334,19 @@ export class Sketch {
   }
 
   /**
-   * Select all vertices within a rectangle (in world coordinates)
+   * Select all vertices within a rectangle.
+   * Bounds are in screen-aligned space; rotation transforms world coords to screen coords.
    */
-  selectVerticesInRect(min: THREE.Vector2, max: THREE.Vector2): void {
+  selectVerticesInRect(min: THREE.Vector2, max: THREE.Vector2, rotation: number = 0): void {
+    const cos = Math.cos(rotation)
+    const sin = Math.sin(rotation)
+
     for (let i = 0; i < this.vertices.length; i++) {
       const v = this.vertices[i]
-      if (v.x >= min.x && v.x <= max.x && v.y >= min.y && v.y <= max.y) {
+      // Rotate vertex to screen-aligned space for testing
+      const screenX = v.x * cos - v.y * sin
+      const screenY = v.x * sin + v.y * cos
+      if (screenX >= min.x && screenX <= max.x && screenY >= min.y && screenY <= max.y) {
         this.selectVertex(i)
       }
     }
