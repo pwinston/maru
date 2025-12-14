@@ -512,8 +512,9 @@ function subdivideLoopAdaptively(
       return distToStart > PARAM_TOLERANCE && distToEnd > PARAM_TOLERANCE
     })
 
-    // Insert interpolated points at each filtered parameter
-    if (filteredParams.length > 0) {
+    // Insert interpolated points only when edge spans 2+ other-loop vertices
+    // (a single vertex mismatch is fine - creates one triangle, not a fan)
+    if (filteredParams.length >= 2) {
       // Sort parameters for consistent ordering
       filteredParams.sort((a, b) => {
         // Handle wrap-around: normalize relative to t0
