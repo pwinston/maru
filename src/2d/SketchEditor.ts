@@ -303,7 +303,7 @@ export class SketchEditor {
     if (!event.shiftKey) {
       this.currentSketch.clearSelection()
     }
-    this.activeTool = new SweepSelection(this.scene, this.getWorldPosition(event))
+    this.activeTool = new SweepSelection(this.scene, this.getWorldPosition(event), this.scene.rotation.z)
   }
 
   /**
@@ -321,7 +321,11 @@ export class SketchEditor {
 
     // Apply selection rectangle
     if (result.selectInRect) {
-      this.currentSketch.selectVerticesInRect(result.selectInRect.min, result.selectInRect.max)
+      this.currentSketch.selectVerticesInRect(
+        result.selectInRect.min,
+        result.selectInRect.max,
+        result.selectInRect.rotation
+      )
     }
 
     // Clean up if tool is done
@@ -563,9 +567,9 @@ export class SketchEditor {
   private onWheel(event: WheelEvent): void {
     event.preventDefault()
 
-    const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9
+    const zoomFactor = event.deltaY > 0 ? 1.08 : 0.93
     this.frustumSize *= zoomFactor
-    this.frustumSize = Math.max(2, Math.min(50, this.frustumSize)) // Clamp zoom
+    this.frustumSize = Math.max(2, this.frustumSize) // Clamp min zoom only
 
     const aspect = this.container.clientWidth / this.container.clientHeight
     this.camera.left = -this.frustumSize * aspect / 2

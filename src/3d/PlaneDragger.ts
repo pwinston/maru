@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Viewport3D } from './Viewport3D'
 import { SketchPlane } from './SketchPlane'
 import { INTERACTION } from '../constants'
+import { Model } from '../model/Model'
 
 /**
  * PlaneDragger
@@ -11,7 +12,7 @@ import { INTERACTION } from '../constants'
  */
 export class PlaneDragger {
   private viewport3d: Viewport3D
-  private planes: SketchPlane[]
+  private model: Model
 
   // Drag state
   private draggedPlane: SketchPlane | null = null
@@ -27,9 +28,9 @@ export class PlaneDragger {
   private onOrbitEnabledChange?: (enabled: boolean) => void
   private onSelectionCleared?: () => void
 
-  constructor(viewport3d: Viewport3D, planes: SketchPlane[]) {
+  constructor(viewport3d: Viewport3D, model: Model) {
     this.viewport3d = viewport3d
-    this.planes = planes
+    this.model = model
   }
 
   /**
@@ -50,7 +51,7 @@ export class PlaneDragger {
    * Start dragging a plane (or create a new one if clicking ground or shift-dragging)
    */
   startDrag(event: MouseEvent, intersectedMesh: THREE.Object3D): void {
-    const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
+    const plane = this.model.planes.find((p: SketchPlane) => p.getPlaneMesh() === intersectedMesh)
     if (!plane) return
 
     // Disable orbit immediately when clicking on a plane
@@ -81,8 +82,8 @@ export class PlaneDragger {
     if (!this.draggedPlane) return
 
     // If creating new plane, add it to scene on first drag
-    if (this.isCreatingNewPlane && !this.planes.includes(this.draggedPlane)) {
-      this.planes.push(this.draggedPlane)
+    if (this.isCreatingNewPlane && !this.model.planes.includes(this.draggedPlane)) {
+      this.model.addPlane(this.draggedPlane)
       this.viewport3d.add(this.draggedPlane.getGroup())
       if (this.onPlaneCreate) {
         this.onPlaneCreate(this.draggedPlane)
@@ -146,17 +147,14 @@ export class PlaneDragger {
   }
 
   /**
-   * Delete a plane from the scene and planes array
+   * Delete a plane from the scene and model
    */
   private deletePlane(plane: SketchPlane): void {
     // Remove from scene
     this.viewport3d.remove(plane.getGroup())
 
-    // Remove from planes array
-    const index = this.planes.indexOf(plane)
-    if (index !== -1) {
-      this.planes.splice(index, 1)
-    }
+    // Remove from model (this also syncs segment arrays)
+    this.model.removePlane(plane)
 
     // Notify that selection should be cleared if this was selected
     if (this.onSelectionCleared) {
@@ -192,12 +190,12 @@ export class PlaneDragger {
   }
 
   /**
-   * Reset to a new set of planes
+   * Reset to a new model
    */
-  reset(newPlanes: SketchPlane[]): void {
+  reset(newModel: Model): void {
     this.draggedPlane = null
     this.isCreatingNewPlane = false
     this.isDeletingPlane = false
-    this.planes = newPlanes
+    this.model = newModel
   }
 }

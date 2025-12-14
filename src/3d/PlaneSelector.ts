@@ -2,6 +2,7 @@ import { Viewport3D } from './Viewport3D'
 import { SketchPlane } from './SketchPlane'
 import { PlaneDragger } from './PlaneDragger'
 import { INTERACTION } from '../constants'
+import { Model } from '../model/Model'
 
 /**
  * PlaneSelector
@@ -11,7 +12,7 @@ import { INTERACTION } from '../constants'
  */
 export class PlaneSelector {
   private viewport3d: Viewport3D
-  private planes: SketchPlane[]
+  private model: Model
   private selectedPlane: SketchPlane | null = null
   private hoveredPlane: SketchPlane | null = null
   private mouseDownPos: { x: number; y: number } | null = null
@@ -20,17 +21,17 @@ export class PlaneSelector {
 
   private dragger: PlaneDragger
 
-  constructor(viewport3d: Viewport3D, planes: SketchPlane[]) {
+  constructor(viewport3d: Viewport3D, model: Model) {
     this.viewport3d = viewport3d
-    this.planes = planes
+    this.model = model
 
     // Create dragger and wire up callbacks
-    this.dragger = new PlaneDragger(viewport3d, planes)
+    this.dragger = new PlaneDragger(viewport3d, model)
     this.dragger.setOnOrbitEnabledChange((enabled) => {
       this.viewport3d.setOrbitEnabled(enabled)
     })
     this.dragger.setOnSelectionCleared(() => {
-      if (this.selectedPlane && !this.planes.includes(this.selectedPlane)) {
+      if (this.selectedPlane && !this.model.planes.includes(this.selectedPlane)) {
         this.selectedPlane = null
       }
     })
@@ -72,7 +73,7 @@ export class PlaneSelector {
     this.mouseDownPos = { x: event.clientX, y: event.clientY }
 
     // Check if clicking on a plane to start dragging
-    const planeMeshes = this.planes.map(p => p.getPlaneMesh())
+    const planeMeshes = this.model.planes.map((p: SketchPlane) => p.getPlaneMesh())
     const intersects = this.viewport3d.raycast(event, planeMeshes)
 
     if (intersects.length > 0) {
@@ -100,7 +101,7 @@ export class PlaneSelector {
     }
 
     // Normal hover behavior
-    const planeMeshes = this.planes.map(p => p.getPlaneMesh())
+    const planeMeshes = this.model.planes.map((p: SketchPlane) => p.getPlaneMesh())
     const intersects = this.viewport3d.raycast(event, planeMeshes)
 
     // Clear previous hover
@@ -114,7 +115,7 @@ export class PlaneSelector {
     // Highlight hovered plane (including selected plane for "alive" feel)
     if (intersects.length > 0) {
       const intersectedMesh = intersects[0].object
-      const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
+      const plane = this.model.planes.find((p: SketchPlane) => p.getPlaneMesh() === intersectedMesh)
       if (plane) {
         plane.setVisualState('hovered')
         this.hoveredPlane = plane
@@ -150,12 +151,12 @@ export class PlaneSelector {
    * Handle click - select plane under cursor, or deselect if clicking empty space
    */
   private handleClick(event: MouseEvent): void {
-    const planeMeshes = this.planes.map(p => p.getPlaneMesh())
+    const planeMeshes = this.model.planes.map((p: SketchPlane) => p.getPlaneMesh())
     const intersects = this.viewport3d.raycast(event, planeMeshes)
 
     if (intersects.length > 0) {
       const intersectedMesh = intersects[0].object
-      const plane = this.planes.find(p => p.getPlaneMesh() === intersectedMesh)
+      const plane = this.model.planes.find((p: SketchPlane) => p.getPlaneMesh() === intersectedMesh)
       if (plane) {
         this.selectPlane(plane)
       }
@@ -234,9 +235,9 @@ export class PlaneSelector {
   }
 
   /**
-   * Reset to a new set of planes, clearing selection
+   * Reset to a new model, clearing selection
    */
-  reset(newPlanes: SketchPlane[]): void {
+  reset(newModel: Model): void {
     // Clear selection state
     if (this.selectedPlane) {
       this.selectedPlane.setVisualState('default')
@@ -244,13 +245,10 @@ export class PlaneSelector {
     this.selectedPlane = null
     this.hoveredPlane = null
 
-    // Update planes reference if different (avoid clearing then pushing same array)
-    if (this.planes !== newPlanes) {
-      this.planes.length = 0
-      this.planes.push(...newPlanes)
-    }
+    // Update model reference
+    this.model = newModel
 
-    // Reset the dragger's planes reference
-    this.dragger.reset(newPlanes)
+    // Reset the dragger's model reference
+    this.dragger.reset(newModel)
   }
 }

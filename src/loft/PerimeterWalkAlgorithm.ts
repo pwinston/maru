@@ -431,11 +431,8 @@ function alignLoopStarts(
 
 /**
  * Options for adaptive subdivision behavior.
- * These could be exposed per-segment in the future.
  */
 export interface AdaptiveSubdivisionOptions {
-  /** Minimum vertices an edge must span to trigger subdivision (default: 2) */
-  threshold: number
   /** Maximum intermediate points to insert per edge (default: unlimited) */
   maxPerEdge: number
   /** Enable/disable subdivision entirely (default: true) */
@@ -443,43 +440,43 @@ export interface AdaptiveSubdivisionOptions {
 }
 
 const DEFAULT_SUBDIVISION_OPTIONS: AdaptiveSubdivisionOptions = {
-  threshold: 3,  // Only subdivide edges spanning 3+ vertices; small mismatches handled naturally
   maxPerEdge: Infinity,
   enabled: true,
 }
 
 /**
- * Count how many vertices from otherLoop have parameters within the given range.
+ * Get the parameters of vertices from otherLoop that fall within the given range.
  * Handles wrap-around at t=1.0.
  */
-function countVerticesInParamRange(
+function getVertexParamsInRange(
   otherLoop: ParameterizedLoop,
   t0: number,
   t1: number
-): number {
-  let count = 0
+): number[] {
+  const params: number[] = []
   const isWrapAround = t1 < t0 // Edge crosses the t=1.0 boundary
 
   for (let i = 0; i < otherLoop.count; i++) {
     const t = otherLoop.param(i)
     if (isWrapAround) {
       // Range wraps: [t0, 1.0) or [0, t1)
-      if (t >= t0 || t < t1) count++
+      if (t >= t0 || t < t1) params.push(t)
     } else {
       // Normal range: [t0, t1)
-      if (t >= t0 && t < t1) count++
+      if (t >= t0 && t < t1) params.push(t)
     }
   }
 
-  return count
+  return params
 }
 
 /**
- * Adaptively subdivide a loop based on how many vertices from the other loop
- * fall within each edge's parameter range.
+ * Adaptively subdivide a loop to match vertices from the other loop.
  *
- * For each edge that spans N vertices from the other loop (where N > threshold),
- * insert N-1 intermediate points to ensure we get quads instead of triangle fans.
+ * For each edge, if the other loop has vertices in the corresponding parameter
+ * range that are NOT close to existing vertices on this loop, insert interpolated
+ * points at those parameters. This ensures we only subdivide where there's a
+ * genuine imbalance, not when both loops have similar vertex distributions.
  */
 function subdivideLoopAdaptively(
   loop: ParameterizedLoop,
@@ -489,6 +486,10 @@ function subdivideLoopAdaptively(
   if (!options.enabled) {
     return [...loop.vertices]
   }
+
+  // Tolerance for considering parameters "close enough" to existing vertices
+  // If an other-loop vertex is within this distance of a loop vertex, skip it
+  const PARAM_TOLERANCE = 0.5 / Math.max(loop.count, otherLoop.count)
 
   const result: THREE.Vector2[] = []
 
@@ -500,17 +501,38 @@ function subdivideLoopAdaptively(
     const t0 = loop.param(i)
     const t1 = loop.param(i + 1)
 
-    // Count other loop vertices in this edge's parameter range
-    const vertsInRange = countVerticesInParamRange(otherLoop, t0, t1)
+    // Get other loop vertex parameters in this edge's range
+    const otherParams = getVertexParamsInRange(otherLoop, t0, t1)
 
-    // If edge spans more vertices than threshold, insert intermediate points
-    if (vertsInRange >= options.threshold) {
-      const numToInsert = Math.min(vertsInRange - 1, options.maxPerEdge)
+    // Filter out parameters that are close to the edge endpoints
+    // (those will naturally connect via the walk algorithm)
+    const filteredParams = otherParams.filter(t => {
+      const distToStart = Math.min(Math.abs(t - t0), 1 - Math.abs(t - t0))
+      const distToEnd = Math.min(Math.abs(t - t1), 1 - Math.abs(t - t1))
+      return distToStart > PARAM_TOLERANCE && distToEnd > PARAM_TOLERANCE
+    })
 
-      for (let j = 1; j <= numToInsert; j++) {
-        // Interpolate evenly along the edge
-        const fraction = j / (numToInsert + 1)
-        const t = t0 + (t1 - t0) * fraction
+    // Insert interpolated points only when edge spans 2+ other-loop vertices
+    // (a single vertex mismatch is fine - creates one triangle, not a fan)
+    if (filteredParams.length >= 2) {
+      // Sort parameters for consistent ordering
+      filteredParams.sort((a, b) => {
+        // Handle wrap-around: normalize relative to t0
+        const normalizeParam = (t: number) => {
+          if (t1 < t0) { // wrap-around edge
+            return t < t0 ? t + 1 : t
+          }
+          return t
+        }
+        return normalizeParam(a) - normalizeParam(b)
+      })
+
+      // Limit insertions if specified
+      const toInsert = options.maxPerEdge < Infinity
+        ? filteredParams.slice(0, options.maxPerEdge)
+        : filteredParams
+
+      for (const t of toInsert) {
         result.push(loop.interpolate(i, t))
       }
     }
@@ -531,6 +553,11 @@ function adaptivelyBalanceLoops(
   loopB: THREE.Vector2[],
   options: AdaptiveSubdivisionOptions = DEFAULT_SUBDIVISION_OPTIONS
 ): { loopA: THREE.Vector2[]; loopB: THREE.Vector2[] } {
+  // Don't subdivide if loops have the same vertex count - they'll align naturally
+  if (loopA.length === loopB.length) {
+    return { loopA: [...loopA], loopB: [...loopB] }
+  }
+
   // First pass: parameterize both loops
   const paramA = new ParameterizedLoop(loopA)
   const paramB = new ParameterizedLoop(loopB)

@@ -8,11 +8,19 @@ export type PlaneVisualState = 'default' | 'hovered' | 'selected' | 'deleting'
  * Represents a 2D sketch plane in 3D space.
  * Contains a Sketch at a specific height (Y position).
  */
+export interface PlaneBounds {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
 export class SketchPlane {
   private sketch: Sketch
   private height: number
   private planeGroup: THREE.Group
   private planeMesh: THREE.Mesh
+  private sharedBounds: PlaneBounds | null = null
 
   constructor(size: number, height: number) {
     const vertices = SketchPlane.createSquare(size)
@@ -34,13 +42,15 @@ export class SketchPlane {
   }
 
   /**
-   * Create a semi-transparent rectangular plane sized to the sketch
+   * Create a semi-transparent rectangular plane sized to bounds
    */
   private createPlaneMesh(): THREE.Mesh {
-    const bounds = this.sketch.getBounds()
+    const bounds = this.sharedBounds ?? this.getLocalBounds()
 
-    const width = bounds.width * (1 + 2 * PLANE.BORDER_PERCENT)
-    const height = bounds.height * (1 + 2 * PLANE.BORDER_PERCENT)
+    const width = (bounds.maxX - bounds.minX) * (1 + 2 * PLANE.BORDER_PERCENT)
+    const height = (bounds.maxY - bounds.minY) * (1 + 2 * PLANE.BORDER_PERCENT)
+    const centerX = (bounds.minX + bounds.maxX) / 2
+    const centerY = (bounds.minY + bounds.maxY) / 2
 
     const geometry = new THREE.PlaneGeometry(width, height)
     const defaultStyle = PLANE.STYLES.default
@@ -52,14 +62,42 @@ export class SketchPlane {
     })
 
     const mesh = new THREE.Mesh(geometry, material)
-    mesh.position.x = bounds.centerX
-    mesh.position.y = bounds.centerY
+    mesh.position.x = centerX
+    mesh.position.y = centerY
 
     return mesh
   }
 
   /**
-   * Rebuild the plane mesh to match current sketch bounds
+   * Get this plane's local bounds from its sketch
+   */
+  private getLocalBounds(): PlaneBounds {
+    const bounds = this.sketch.getBounds()
+    return {
+      minX: bounds.centerX - bounds.width / 2,
+      maxX: bounds.centerX + bounds.width / 2,
+      minY: bounds.centerY - bounds.height / 2,
+      maxY: bounds.centerY + bounds.height / 2
+    }
+  }
+
+  /**
+   * Get bounds for external use (e.g., calculating max bounds)
+   */
+  getBounds(): PlaneBounds {
+    return this.getLocalBounds()
+  }
+
+  /**
+   * Set shared bounds (all planes use the same size)
+   */
+  setSharedBounds(bounds: PlaneBounds): void {
+    this.sharedBounds = bounds
+    this.rebuildPlaneMesh()
+  }
+
+  /**
+   * Rebuild the plane mesh to match current bounds
    */
   private rebuildPlaneMesh(): void {
     this.planeGroup.remove(this.planeMesh)

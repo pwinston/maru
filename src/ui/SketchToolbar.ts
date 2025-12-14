@@ -59,7 +59,25 @@ export class SketchToolbar {
     if (target.tagName !== 'BUTTON' || !target.dataset.sides) return
 
     const sides = parseInt(target.dataset.sides, 10)
+    this.setActiveSides(sides)
     this.onShapeSelect?.(sides)
+  }
+
+  /**
+   * Set the active sides button (or clear if null)
+   */
+  setActiveSides(sides: number | null): void {
+    this.shapeElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
+    if (sides !== null) {
+      this.shapeElement.querySelector(`[data-sides="${sides}"]`)?.classList.add('active')
+    }
+  }
+
+  /**
+   * Clear the active sides button (shape has been edited)
+   */
+  clearActiveSides(): void {
+    this.setActiveSides(null)
   }
 
   setOrientationMode(mode: 'fixed' | 'rotate'): void {

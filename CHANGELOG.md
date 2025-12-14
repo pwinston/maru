@@ -90,3 +90,12 @@ revert it. For this project I'm using branches like this:
 1. File menu with Save/Load options!
 2. Create App.ts as proper class instead of main.ts module vars.
 ![](images/11.jpg)
+
+### Minimap and per-segment locking ([PR #12](https://github.com/pwinston/maru/pull/12))    
+1. Minimap shows planes and per-segment locking status
+2. Per-segment locking works 
+3. Make all planes the size of the largest plane
+4. Version badge (make sure interacting with latest version)
+5. Some tweaks to perimeter walk
+6. Fix sweep select on rotated planes 
+![](images/12.jpg)
