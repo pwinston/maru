@@ -213,6 +213,35 @@ export class App {
   }
 
   /**
+   * Update ghost sketch based on selection and toggle state
+   */
+  private updateGhostSketch(): void {
+    if (!this.sketchToolbar.isGhostEnabled()) {
+      this.sketchEditor.clearGhostSketch()
+      return
+    }
+
+    const selectedPlane = this.planeSelector.getSelectedPlane()
+    if (!selectedPlane) {
+      this.sketchEditor.clearGhostSketch()
+      return
+    }
+
+    // Find the plane below the selected one
+    const sortedPlanes = [...this.sketchPlanes].sort((a, b) => a.getHeight() - b.getHeight())
+    const selectedIndex = sortedPlanes.indexOf(selectedPlane)
+
+    if (selectedIndex > 0) {
+      // Show the plane below as ghost
+      const planeBelow = sortedPlanes[selectedIndex - 1]
+      this.sketchEditor.setGhostSketch(planeBelow.getSketch())
+    } else {
+      // No plane below (this is the bottom plane)
+      this.sketchEditor.clearGhostSketch()
+    }
+  }
+
+  /**
    * Reset to a single square plane at ground level
    */
   private newModel(): void {
@@ -292,6 +321,7 @@ export class App {
         this.minimap.setSelectedPlane(-1)
       }
       this.updateRoofVisibility()
+      this.updateGhostSketch()
       this.sketchToolbar.clearActiveSides()
     })
 
@@ -370,6 +400,10 @@ export class App {
         selectedPlane.setVertices(vertices)
         this.rebuildLoft()
       }
+    })
+
+    this.sketchToolbar.setOnGhostChange(() => {
+      this.updateGhostSketch()
     })
 
     // File menu callbacks

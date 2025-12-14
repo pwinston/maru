@@ -44,6 +44,8 @@ export const SKETCH = {
   LINE_COLOR: 0x00ff00,
   GHOST_SCREEN_PX: 10,          // Target ghost vertex size in screen pixels
   GHOST_VERTEX_COLOR: 0x88ff88,
+  GHOST_LINE_COLOR: 0x888888,   // Gray for ghost sketch outline
+  GHOST_LINE_OPACITY: 0.4,
   DELETE_COLOR: 0xff0000,
   SEGMENT_HIT_WIDTH: 0.3,
   VERTEX_SAFE_ZONE: 0.25,

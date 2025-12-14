@@ -49,6 +49,9 @@ export class SketchEditor {
   private selectionHandles: SelectionHandles
   private activeHandle: HandleType = 'none'
 
+  // Ghost sketch (reference outline from another plane)
+  private ghostGroup: THREE.Group | null = null
+
   constructor(container: HTMLElement) {
     this.container = container
     this.raycaster = new THREE.Raycaster()
@@ -598,6 +601,15 @@ export class SketchEditor {
     this.ghostVertex.scale.set(ghostScale, ghostScale, 1)
     this.deletePreviewMarker.scale.set(ghostScale, ghostScale, 1)
 
+    // Update ghost group vertex scales (Mesh children, not the Line)
+    if (this.ghostGroup) {
+      this.ghostGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.scale.set(vertexScale, vertexScale, 1)
+        }
+      })
+    }
+
     // Update selection handles size
     this.selectionHandles.setHandleSize(vertexScale)
     this.updateSelectionHandles()
@@ -655,6 +667,73 @@ export class SketchEditor {
   }
 
   /**
+   * Set a ghost sketch to display as a reference (non-interactive outline)
+   */
+  setGhostSketch(sketch: Sketch | null): void {
+    // Remove existing ghost group
+    if (this.ghostGroup) {
+      this.scene.remove(this.ghostGroup)
+      // Dispose all children
+      this.ghostGroup.traverse((child) => {
+        if (child instanceof THREE.Line || child instanceof THREE.Mesh) {
+          child.geometry.dispose()
+          if (child.material instanceof THREE.Material) {
+            child.material.dispose()
+          }
+        }
+      })
+      this.ghostGroup = null
+    }
+
+    if (!sketch) return
+
+    this.ghostGroup = new THREE.Group()
+
+    // Create ghost line from sketch vertices
+    const vertices = sketch.getVertices()
+    const points3d = vertices.map(v => new THREE.Vector3(v.x, v.y, -0.005))
+    points3d.push(points3d[0].clone()) // Close the loop
+
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points3d)
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: SKETCH.GHOST_LINE_COLOR,
+      transparent: true,
+      opacity: SKETCH.GHOST_LINE_OPACITY
+    })
+    const ghostLine = new THREE.Line(lineGeometry, lineMaterial)
+    this.ghostGroup.add(ghostLine)
+
+    // Create ghost vertices (same size as real vertices, but ghost color)
+    const vertexMaterial = new THREE.MeshBasicMaterial({
+      color: SKETCH.GHOST_LINE_COLOR,
+      transparent: true,
+      opacity: SKETCH.GHOST_LINE_OPACITY,
+      side: THREE.DoubleSide
+    })
+
+    // Calculate vertex scale (same as updateVertexScales)
+    const worldUnitsPerPixel = this.frustumSize / this.container.clientHeight
+    const vertexScale = SKETCH.VERTEX_SCREEN_PX * worldUnitsPerPixel
+
+    for (const v of vertices) {
+      const vertexGeometry = new THREE.PlaneGeometry(1, 1)
+      const vertexMesh = new THREE.Mesh(vertexGeometry, vertexMaterial.clone())
+      vertexMesh.position.set(v.x, v.y, -0.004) // Slightly in front of ghost line
+      vertexMesh.scale.set(vertexScale, vertexScale, 1)
+      this.ghostGroup.add(vertexMesh)
+    }
+
+    this.scene.add(this.ghostGroup)
+  }
+
+  /**
+   * Clear the ghost sketch
+   */
+  clearGhostSketch(): void {
+    this.setGhostSketch(null)
+  }
+
+  /**
    * Get the current sketch
    */
   getSketch(): Sketch | null {
@@ -669,6 +748,7 @@ export class SketchEditor {
       this.scene.remove(this.currentSketch.getEditorGroup())
       this.currentSketch = null
     }
+    this.clearGhostSketch()
     this.noSelectionMessage.style.display = 'flex'
   }
 
