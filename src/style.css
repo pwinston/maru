@@ -431,3 +431,19 @@ button:focus-visible {
   color: rgba(255, 255, 255, 0.4);
   font-style: italic;
 }
+
+/* Version badge */
+.version-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: monospace;
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  border-radius: 4px;
+  z-index: 200;
+  pointer-events: none;
+}
