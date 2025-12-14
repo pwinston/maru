@@ -10,6 +10,7 @@ import { MainToolbar } from './ui/MainToolbar'
 import { SketchToolbar } from './ui/SketchToolbar'
 import { createRegularPolygon } from './util/Geometry'
 import { FileMenu } from './ui/FileMenu'
+import { Minimap } from './ui/Minimap'
 import { BuildingSerializer } from './storage/BuildingSerializer'
 import type { BuildingData } from './storage/BuildingTypes'
 
@@ -31,6 +32,7 @@ export class App {
   private mainToolbar: MainToolbar
   private sketchToolbar: SketchToolbar
   private fileMenu: FileMenu
+  private minimap: Minimap
 
   // State
   private sketchPlanes: SketchPlane[] = []
@@ -55,6 +57,7 @@ export class App {
     this.mainToolbar = new MainToolbar(container3d)
     this.sketchToolbar = new SketchToolbar(container2d)
     this.fileMenu = new FileMenu(container3d)
+    this.minimap = new Minimap(container2d)
 
     // Create plane selector
     this.planeSelector = new PlaneSelector(this.viewport3d, this.sketchPlanes)
@@ -108,6 +111,7 @@ export class App {
   private rebuildLoft(): void {
     const model = LoftableModel.fromPlanes(this.sketchPlanes)
     this.loft.rebuildFromModel(model)
+    this.minimap.setPlaneCount(this.sketchPlanes.length)
   }
 
   /**
@@ -195,8 +199,13 @@ export class App {
     this.planeSelector.setOnSelectionChange((plane) => {
       if (plane) {
         this.sketchEditor.setSketch(plane.getSketch())
+        // Update minimap selection (planes sorted by height, 0 = bottom)
+        const sortedPlanes = [...this.sketchPlanes].sort((a, b) => a.getHeight() - b.getHeight())
+        const planeIndex = sortedPlanes.indexOf(plane)
+        this.minimap.setSelectedPlane(planeIndex)
       } else {
         this.sketchEditor.clear()
+        this.minimap.setSelectedPlane(-1)
       }
       this.updateRoofVisibility()
     })
@@ -289,6 +298,20 @@ export class App {
 
     this.fileMenu.setOnGetCurrentData(() => {
       return BuildingSerializer.serialize(this.sketchPlanes)
+    })
+
+    // Minimap callbacks
+    this.minimap.setOnSegmentLockChange((segmentIndex, locked) => {
+      console.log(`Segment ${segmentIndex} ${locked ? 'locked' : 'unlocked'}`)
+      // TODO: Implement actual locking behavior
+    })
+
+    this.minimap.setOnPlaneSelect((planeIndex) => {
+      // Planes are sorted by height (0 = bottom, higher = top)
+      const sortedPlanes = [...this.sketchPlanes].sort((a, b) => a.getHeight() - b.getHeight())
+      if (planeIndex >= 0 && planeIndex < sortedPlanes.length) {
+        this.planeSelector.selectPlane(sortedPlanes[planeIndex])
+      }
     })
   }
 
