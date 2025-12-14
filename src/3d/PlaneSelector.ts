@@ -140,7 +140,11 @@ export class PlaneSelector {
         this.handleClick(event)
       } else {
         // Was a drag - end it (may delete if in delete state)
-        this.dragger.endDrag()
+        const createdPlane = this.dragger.endDrag()
+        // If a new plane was created via shift-drag, select it
+        if (createdPlane) {
+          this.selectPlane(createdPlane)
+        }
       }
     }
 
