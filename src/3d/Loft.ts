@@ -289,8 +289,10 @@ export class Loft {
     if (vertices.length < 3) return null
 
     const positions: number[] = []
+    const colors: number[] = []
     for (const v of vertices) {
       positions.push(v.x, height, -v.y)
+      colors.push(1, 1, 1)  // White vertex color (no tinting)
     }
 
     const roofTriangles = triangulatePolygon(vertices)
@@ -298,6 +300,7 @@ export class Loft {
 
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
     geometry.setIndex(roofTriangles)
     geometry.computeVertexNormals()
 
