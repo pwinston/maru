@@ -213,6 +213,35 @@ export class App {
   }
 
   /**
+   * Update ghost sketch based on selection and toggle state
+   */
+  private updateGhostSketch(): void {
+    if (!this.sketchToolbar.isGhostEnabled()) {
+      this.sketchEditor.clearGhostSketch()
+      return
+    }
+
+    const selectedPlane = this.planeSelector.getSelectedPlane()
+    if (!selectedPlane) {
+      this.sketchEditor.clearGhostSketch()
+      return
+    }
+
+    // Find the plane below the selected one
+    const sortedPlanes = [...this.model.planes].sort((a, b) => a.getHeight() - b.getHeight())
+    const selectedIndex = sortedPlanes.indexOf(selectedPlane)
+
+    if (selectedIndex > 0) {
+      // Show the plane below as ghost
+      const planeBelow = sortedPlanes[selectedIndex - 1]
+      this.sketchEditor.setGhostSketch(planeBelow.getSketch())
+    } else {
+      // No plane below (this is the bottom plane)
+      this.sketchEditor.clearGhostSketch()
+    }
+  }
+
+  /**
    * Reset to a single square plane at ground level
    */
   private newModel(): void {
@@ -292,6 +321,7 @@ export class App {
         this.minimap.setSelectedPlane(-1)
       }
       this.updateRoofVisibility()
+      this.updateGhostSketch()
       this.sketchToolbar.clearActiveSides()
     })
 
@@ -335,6 +365,19 @@ export class App {
       }
     })
 
+    this.sketchEditor.setOnDrawComplete((vertices) => {
+      const selectedPlane = this.planeSelector.getSelectedPlane()
+      if (selectedPlane) {
+        selectedPlane.setVertices(vertices)
+        this.onSketchModified()
+      }
+      this.sketchToolbar.endDrawMode()
+    })
+
+    this.sketchEditor.setOnDrawCancel(() => {
+      this.sketchToolbar.endDrawMode()
+    })
+
     // Main toolbar callbacks
     this.mainToolbar.setOnPlanesChange((visible) => {
       this.model.planes.forEach(plane => plane.getGroup().visible = visible)
@@ -364,12 +407,28 @@ export class App {
     })
 
     this.sketchToolbar.setOnShapeSelect((sides) => {
+      // Cancel draw mode if active
+      if (this.sketchEditor.isDrawModeActive()) {
+        this.sketchEditor.cancelDrawMode()
+        this.sketchToolbar.endDrawMode()
+      }
+
       const selectedPlane = this.planeSelector.getSelectedPlane()
       if (selectedPlane) {
         const vertices = createRegularPolygon(sides, DEFAULT_BUILDING_SIZE)
         selectedPlane.setVertices(vertices)
+        // Re-set sketch in 2D editor to sync with new shape
+        this.sketchEditor.setSketch(selectedPlane.getSketch())
         this.rebuildLoft()
       }
+    })
+
+    this.sketchToolbar.setOnGhostChange(() => {
+      this.updateGhostSketch()
+    })
+
+    this.sketchToolbar.setOnDrawStart(() => {
+      this.sketchEditor.startDrawMode()
     })
 
     // File menu callbacks
@@ -387,30 +446,23 @@ export class App {
 
     // Minimap callbacks
     this.minimap.setOnSegmentLockChange((segmentIndex, locked) => {
-      console.log(`[onSegmentLockChange] segmentIndex=${segmentIndex}, locked=${locked}`)
-      console.log(`[onSegmentLockChange] currentLoftModel exists: ${this.currentLoftModel !== null}`)
 
       if (locked && this.currentLoftModel) {
         // Locking: capture frozen segment data from current topology
         const segment = this.currentLoftModel.segments[segmentIndex]
-        console.log(`[onSegmentLockChange] segment exists: ${segment !== undefined}`)
         if (segment) {
           const frozen = LoftableModel.freezeSegment(
             segment.bottomPlane,
             segment.topPlane,
             segment.faces
           )
-          console.log(`[onSegmentLockChange] Created frozen segment with ${frozen.faces.length} faces`)
           this.model.setFrozenSegment(segmentIndex, frozen)
         }
       }
       this.model.setSegmentLocked(segmentIndex, locked)
-      console.log(`[onSegmentLockChange] After setSegmentLocked: locked=${this.model.isSegmentLocked(segmentIndex)}, hasFrozen=${this.model.getFrozenSegment(segmentIndex) !== null}`)
 
-      // Rebuild loft when unlocking to use fresh topology
-      if (!locked) {
-        this.rebuildLoft()
-      }
+      // Rebuild loft to update the view
+      this.rebuildLoft()
     })
 
     this.minimap.setOnPlaneSelect((planeIndex) => {
@@ -441,13 +493,14 @@ export class App {
       { key: 'Right-drag', action: 'Pan' },
       { key: 'Left-drag', action: 'Orbit' },
       { key: 'Drag plane', action: 'Adjust height' },
-      { key: 'Shift-drag', action: 'Copy floor' },
-      { key: 'Drag down', action: 'Delete floor' },
+      { key: 'Shift-drag', action: 'Copy plane' },
+      { key: 'Drag down', action: 'Delete plane' },
     ]).appendTo(this.container3d)
 
     new HelpPanel([
       { key: 'Scroll', action: 'Zoom' },
       { key: 'Right-drag', action: 'Pan' },
+      { key: 'Left-drag', action: 'Sweep select' },
       { key: 'Double-click', action: 'Delete vertex' },
     ]).appendTo(this.container2d)
   }

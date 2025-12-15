@@ -1,17 +1,22 @@
 /**
  * Toolbar for the 2D sketch viewport.
- * Handles orientation mode (fixed/rotate) and shape presets.
+ * Handles orientation mode (fixed/rotate), ghost toggle, and shape presets.
  */
 export class SketchToolbar {
   private orientationElement: HTMLDivElement
+  private ghostElement: HTMLDivElement
+  private drawElement: HTMLDivElement
   private shapeElement: HTMLDivElement
   private orientationMode: 'fixed' | 'rotate' = 'fixed'
+  private ghostEnabled: boolean = false
 
   private onOrientationChange?: (mode: 'fixed' | 'rotate') => void
+  private onGhostChange?: (enabled: boolean) => void
+  private onDrawStart?: () => void
   private onShapeSelect?: (sides: number) => void
 
   constructor(container: HTMLElement) {
-    // Create orientation toolbar (centered)
+    // Create orientation toolbar (left side)
     this.orientationElement = document.createElement('div')
     this.orientationElement.className = 'orientation-toolbar'
     this.orientationElement.innerHTML = `
@@ -19,6 +24,22 @@ export class SketchToolbar {
       <button data-mode="rotate">Rotate</button>
     `
     container.appendChild(this.orientationElement)
+
+    // Create ghost toggle (next to orientation)
+    this.ghostElement = document.createElement('div')
+    this.ghostElement.className = 'ghost-toolbar'
+    this.ghostElement.innerHTML = `<button data-ghost="toggle">Ghost</button>`
+    container.appendChild(this.ghostElement)
+
+    this.ghostElement.addEventListener('click', () => this.toggleGhost())
+
+    // Create draw button
+    this.drawElement = document.createElement('div')
+    this.drawElement.className = 'draw-toolbar'
+    this.drawElement.innerHTML = `<button data-draw="start">Draw</button>`
+    container.appendChild(this.drawElement)
+
+    this.drawElement.addEventListener('click', () => this.startDraw())
 
     // Create shape toolbar (right side)
     this.shapeElement = document.createElement('div')
@@ -97,5 +118,59 @@ export class SketchToolbar {
 
   setOnShapeSelect(callback: (sides: number) => void): void {
     this.onShapeSelect = callback
+  }
+
+  /**
+   * Start draw mode
+   */
+  private startDraw(): void {
+    const btn = this.drawElement.querySelector('button')
+    if (btn) {
+      btn.classList.add('active')
+    }
+    this.onDrawStart?.()
+  }
+
+  /**
+   * End draw mode (called when drawing completes or is cancelled)
+   */
+  endDrawMode(): void {
+    const btn = this.drawElement.querySelector('button')
+    if (btn) {
+      btn.classList.remove('active')
+    }
+  }
+
+  /**
+   * Set callback for when draw mode starts
+   */
+  setOnDrawStart(callback: () => void): void {
+    this.onDrawStart = callback
+  }
+
+  /**
+   * Toggle ghost sketch visibility
+   */
+  private toggleGhost(): void {
+    this.ghostEnabled = !this.ghostEnabled
+    const btn = this.ghostElement.querySelector('button')
+    if (btn) {
+      btn.classList.toggle('active', this.ghostEnabled)
+    }
+    this.onGhostChange?.(this.ghostEnabled)
+  }
+
+  /**
+   * Check if ghost is enabled
+   */
+  isGhostEnabled(): boolean {
+    return this.ghostEnabled
+  }
+
+  /**
+   * Set callback for when ghost toggle changes
+   */
+  setOnGhostChange(callback: (enabled: boolean) => void): void {
+    this.onGhostChange = callback
   }
 }

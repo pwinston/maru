@@ -33,6 +33,10 @@ export class PlaneSelector {
     this.dragger.setOnSelectionCleared(() => {
       if (this.selectedPlane && !this.model.planes.includes(this.selectedPlane)) {
         this.selectedPlane = null
+        // Notify App to clear the sketch editor
+        if (this.onSelectionChange) {
+          this.onSelectionChange(null)
+        }
       }
     })
 
@@ -140,7 +144,11 @@ export class PlaneSelector {
         this.handleClick(event)
       } else {
         // Was a drag - end it (may delete if in delete state)
-        this.dragger.endDrag()
+        const createdPlane = this.dragger.endDrag()
+        // If a new plane was created via shift-drag, select it
+        if (createdPlane) {
+          this.selectPlane(createdPlane)
+        }
       }
     }
 

@@ -29,14 +29,19 @@ export class LoftSegment {
   /** Mesh faces (quads and triangles) connecting the two planes */
   faces: LoftFace[]
 
+  /** Whether this segment is locked (topology frozen) */
+  isLocked: boolean
+
   constructor(
     bottomPlane: SketchPlane,
     topPlane: SketchPlane,
-    faces: LoftFace[]
+    faces: LoftFace[],
+    isLocked: boolean = false
   ) {
     this.bottomPlane = bottomPlane
     this.topPlane = topPlane
     this.faces = faces
+    this.isLocked = isLocked
   }
 
   getBottomHeight(): number {
@@ -100,8 +105,6 @@ export class LoftableModel {
    * - Rebuilds using perimeterWalkAlgorithm (topology may change)
    */
   static fromModel(model: Model): LoftableModel {
-    console.log('[fromModel] Building loft, planes:', model.planes.length)
-
     if (model.planes.length < 2) {
       return new LoftableModel([])
     }
@@ -117,14 +120,11 @@ export class LoftableModel {
       const isLocked = model.isSegmentLocked(i)
       const frozen = model.getFrozenSegment(i)
 
-      console.log(`[fromModel] Segment ${i}: locked=${isLocked}, hasFrozen=${frozen !== null}`)
-
       let faces: LoftFace[]
 
       if (isLocked && frozen) {
         // Locked segment with frozen topology:
         // Update positions from current sketches, keep topology fixed
-        console.log(`[fromModel] Segment ${i}: USING FROZEN TOPOLOGY (${frozen.faces.length} faces)`)
         updateFrozenPositions(
           frozen,
           bottomPlane.getSketch().getVertices(),
@@ -136,7 +136,6 @@ export class LoftableModel {
       } else {
         // Unlocked segment (or locked without frozen data):
         // Rebuild from scratch
-        console.log(`[fromModel] Segment ${i}: REBUILDING FROM SCRATCH`)
         const result = perimeterWalkAlgorithm(
           bottomPlane.getSketch().getVertices(),
           bottomPlane.getHeight(),
@@ -146,7 +145,7 @@ export class LoftableModel {
         faces = result.faces
       }
 
-      segments.push(new LoftSegment(bottomPlane, topPlane, faces))
+      segments.push(new LoftSegment(bottomPlane, topPlane, faces, isLocked))
     }
 
     return new LoftableModel(segments)

@@ -1,5 +1,5 @@
 // App version (increment to verify code changes are live)
-export const VERSION = 7
+export const VERSION = 9
 
 // Grid configuration
 export const GRID = {
@@ -44,6 +44,8 @@ export const SKETCH = {
   LINE_COLOR: 0x00ff00,
   GHOST_SCREEN_PX: 10,          // Target ghost vertex size in screen pixels
   GHOST_VERTEX_COLOR: 0x88ff88,
+  GHOST_LINE_COLOR: 0x888888,   // Gray for ghost sketch outline
+  GHOST_LINE_OPACITY: 0.4,
   DELETE_COLOR: 0xff0000,
   SEGMENT_HIT_WIDTH: 0.3,
   VERTEX_SAFE_ZONE: 0.25,
@@ -68,6 +70,8 @@ export const LOFT = {
   SOLID_COLOR: 0x4488cc,
   WIRE_COLOR: 0xdddddd,  // Light gray wireframe for quad edges
   DIAGONAL_WIRE_COLOR: 0xff8844,  // Orange dashed for triangulation diagonals
+  // Locked segment tint - warm shift (r, g, b multipliers)
+  LOCKED_TINT: { r: 1.5, g: 1.0, b: 0.5 },  // DRAMATIC for testing
 }
 
 // Interaction thresholds

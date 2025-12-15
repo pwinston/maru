@@ -16,11 +16,39 @@ export class Sketch {
   private selectedVertices: Set<number> = new Set()
 
   constructor(vertices: THREE.Vector2[]) {
-    this.vertices = vertices.map(v => v.clone())
+    this.vertices = Sketch.normalizeWinding(vertices)
     this.lineGroup = new THREE.Group()
     this.editorGroup = new THREE.Group()
 
     this.rebuild()
+  }
+
+  /**
+   * Calculate the signed area of a polygon.
+   * Positive = counter-clockwise, Negative = clockwise
+   */
+  private static signedArea(vertices: THREE.Vector2[]): number {
+    let area = 0
+    for (let i = 0; i < vertices.length; i++) {
+      const j = (i + 1) % vertices.length
+      area += vertices[i].x * vertices[j].y
+      area -= vertices[j].x * vertices[i].y
+    }
+    return area / 2
+  }
+
+  /**
+   * Normalize vertices to counter-clockwise winding order.
+   * Returns a new array (cloned vertices).
+   */
+  private static normalizeWinding(vertices: THREE.Vector2[]): THREE.Vector2[] {
+    const cloned = vertices.map(v => v.clone())
+    const area = Sketch.signedArea(cloned)
+    if (area < 0) {
+      // Clockwise - reverse to make counter-clockwise
+      cloned.reverse()
+    }
+    return cloned
   }
 
   /**
@@ -238,10 +266,10 @@ export class Sketch {
   }
 
   /**
-   * Set all vertices
+   * Set all vertices (normalizes to counter-clockwise winding)
    */
   setVertices(vertices: THREE.Vector2[]): void {
-    this.vertices = vertices.map(v => v.clone())
+    this.vertices = Sketch.normalizeWinding(vertices)
     this.rebuild()
   }
 

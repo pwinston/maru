@@ -5,6 +5,7 @@ import type { HandleType } from './SelectionHandles'
 import type { EditorTool } from './EditorTool'
 import { SweepSelection } from './SweepSelection'
 import { TransformTool } from './TransformTool'
+import { DrawTool } from './DrawTool'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
 import { createGrid } from '../util/GridHelper'
 import { GRID, VIEWPORT_2D, SKETCH } from '../constants'
@@ -48,6 +49,14 @@ export class SketchEditor {
   // Selection handles
   private selectionHandles: SelectionHandles
   private activeHandle: HandleType = 'none'
+
+  // Ghost sketch (reference outline from another plane)
+  private ghostGroup: THREE.Group | null = null
+
+  // Draw mode state
+  private savedVerticesForRestore: THREE.Vector2[] | null = null
+  private onDrawComplete: ((vertices: THREE.Vector2[]) => void) | null = null
+  private onDrawCancel: (() => void) | null = null
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -148,12 +157,55 @@ export class SketchEditor {
         this.updateSelectionHandles()
       }
     }
+
+    if ((event.key === 'Delete' || event.key === 'Backspace') && this.currentSketch) {
+      this.deleteSelectedVertices()
+    }
+  }
+
+  /**
+   * Delete selected vertices, keeping at least 3 vertices
+   */
+  private deleteSelectedVertices(): void {
+    if (!this.currentSketch || !this.onVertexDelete) return
+
+    const vertices = this.currentSketch.getVertices()
+    const selectedIndices = this.currentSketch.getSelectedIndices()
+    if (selectedIndices.length === 0) return
+
+    // Calculate how many we can delete (must keep at least 3)
+    const maxDeletions = Math.max(0, vertices.length - 3)
+    if (maxDeletions === 0) return
+
+    // Sort indices in descending order to delete from end first (avoids index shifting)
+    const indicesToDelete = [...selectedIndices]
+      .sort((a, b) => b - a)
+      .slice(0, maxDeletions)
+
+    // Delete each vertex
+    for (const index of indicesToDelete) {
+      this.onVertexDelete(index)
+    }
+
+    // Clear selection and update handles
+    this.currentSketch.clearSelection()
+    this.updateSelectionHandles()
   }
 
   /**
    * Cancel all active operations and reset state
    */
   private cancelAllOperations(): void {
+    // Handle draw mode cancellation
+    if (this.activeTool instanceof DrawTool && this.savedVerticesForRestore) {
+      // Restore original sketch
+      if (this.currentSketch) {
+        this.currentSketch.getEditorGroup().visible = true
+      }
+      this.savedVerticesForRestore = null
+      this.onDrawCancel?.()
+    }
+
     // Clean up active tool
     if (this.activeTool) {
       this.activeTool.dispose()
@@ -219,6 +271,12 @@ export class SketchEditor {
       return
     }
 
+    // If draw tool is active, don't process normal interactions
+    // (DrawTool handles clicks via onMouseUp)
+    if (this.activeTool instanceof DrawTool) {
+      return
+    }
+
     if (!this.currentSketch) return
 
     const ndc = this.getMouseNDC(event)
@@ -234,7 +292,9 @@ export class SketchEditor {
         this.activeHandle = this.selectionHandles.getHandleType(mesh)
         this.setupTransformTool(event)
         this.selectionHandles.hide()  // Hide handles during manipulation
-        this.container.style.cursor = this.activeHandle === 'rotate' ? 'grab' : 'ns-resize'
+        this.container.style.cursor = this.activeHandle === 'rotate' ? 'grab'
+                                   : this.activeHandle === 'move' ? 'move'
+                                   : 'ns-resize'
         return
       }
     }
@@ -254,10 +314,12 @@ export class SketchEditor {
         // If clicking a selected vertex, prepare to drag all selected vertices
         if (this.currentSketch.isSelected(index)) {
           this.setupTransformTool(event)
+          this.selectionHandles.hide()
         } else {
           // Clicking unselected vertex clears selection and selects this vertex
           this.currentSketch.clearSelection()
           this.currentSketch.selectVertex(index)
+          this.selectionHandles.hide()
         }
       }
       return
@@ -266,6 +328,7 @@ export class SketchEditor {
     // Check if clicking on a segment to insert a vertex
     if (this.hoveredSegmentIndex !== null) {
       this.currentSketch.clearSelection()
+      this.selectionHandles.hide()
       this.tryInsertVertex(event)
       return
     }
@@ -326,6 +389,15 @@ export class SketchEditor {
         result.selectInRect.max,
         result.selectInRect.rotation
       )
+    }
+
+    // Handle completed draw
+    if (result.drawnVertices) {
+      this.savedVerticesForRestore = null  // Clear restore state
+      if (this.currentSketch) {
+        this.currentSketch.getEditorGroup().visible = true
+      }
+      this.onDrawComplete?.(result.drawnVertices)
     }
 
     // Clean up if tool is done
@@ -399,6 +471,10 @@ export class SketchEditor {
     if (this.activeTool) {
       const result = this.activeTool.onMouseMove(this.getWorldPosition(event))
       this.applyToolResult(result)
+      // Maintain crosshair cursor during draw mode
+      if (this.activeTool instanceof DrawTool) {
+        this.container.style.cursor = 'crosshair'
+      }
       return
     }
 
@@ -439,7 +515,24 @@ export class SketchEditor {
     const ndc = this.getMouseNDC(event)
     this.raycaster.setFromCamera(ndc, this.camera)
 
-    // First check vertices (they have priority)
+    // First check selection handles (highest priority)
+    if (this.selectionHandles.isVisible()) {
+      const handleMeshes = this.selectionHandles.getHandleMeshes()
+      const handleIntersects = this.raycaster.intersectObjects(handleMeshes)
+
+      if (handleIntersects.length > 0) {
+        // Hovering over a handle - hide ghost, show appropriate cursor
+        this.ghostVertex.visible = false
+        this.hoveredSegmentIndex = null
+        const handleType = this.selectionHandles.getHandleType(handleIntersects[0].object)
+        this.container.style.cursor = handleType === 'rotate' ? 'grab'
+                                    : handleType === 'move' ? 'move'
+                                    : 'ns-resize'
+        return
+      }
+    }
+
+    // Check vertices (they have priority)
     const vertexMeshes = this.currentSketch.getVertexMeshes()
     const vertexIntersects = this.raycaster.intersectObjects(vertexMeshes)
 
@@ -598,6 +691,15 @@ export class SketchEditor {
     this.ghostVertex.scale.set(ghostScale, ghostScale, 1)
     this.deletePreviewMarker.scale.set(ghostScale, ghostScale, 1)
 
+    // Update ghost group vertex scales (Mesh children, not the Line)
+    if (this.ghostGroup) {
+      this.ghostGroup.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.scale.set(vertexScale, vertexScale, 1)
+        }
+      })
+    }
+
     // Update selection handles size
     this.selectionHandles.setHandleSize(vertexScale)
     this.updateSelectionHandles()
@@ -644,6 +746,64 @@ export class SketchEditor {
   }
 
   /**
+   * Set callback for when draw mode completes
+   */
+  setOnDrawComplete(callback: (vertices: THREE.Vector2[]) => void): void {
+    this.onDrawComplete = callback
+  }
+
+  /**
+   * Set callback for when draw mode is cancelled
+   */
+  setOnDrawCancel(callback: () => void): void {
+    this.onDrawCancel = callback
+  }
+
+  /**
+   * Start draw mode - user clicks to place vertices
+   */
+  startDrawMode(): void {
+    if (!this.currentSketch) return
+
+    // Save current vertices for restore on cancel
+    this.savedVerticesForRestore = this.currentSketch.getVertices()
+
+    // Hide current sketch while drawing
+    this.currentSketch.getEditorGroup().visible = false
+
+    // Calculate vertex scale for the draw tool
+    const worldUnitsPerPixel = this.frustumSize / this.container.clientHeight
+    const vertexScale = SKETCH.VERTEX_SCREEN_PX * worldUnitsPerPixel
+
+    // Create and activate draw tool
+    this.activeTool = new DrawTool(this.scene, vertexScale)
+
+    // Set crosshair cursor for draw mode
+    this.container.style.cursor = 'crosshair'
+  }
+
+  /**
+   * Check if draw mode is active
+   */
+  isDrawModeActive(): boolean {
+    return this.activeTool instanceof DrawTool
+  }
+
+  /**
+   * Cancel draw mode without restoring (used when switching to preset shape)
+   */
+  cancelDrawMode(): void {
+    if (this.activeTool instanceof DrawTool) {
+      this.activeTool.dispose()
+      this.activeTool = null
+      this.savedVerticesForRestore = null
+      if (this.currentSketch) {
+        this.currentSketch.getEditorGroup().visible = true
+      }
+    }
+  }
+
+  /**
    * Set the sketch to display and edit
    */
   setSketch(sketch: Sketch): void {
@@ -652,6 +812,73 @@ export class SketchEditor {
     this.scene.add(sketch.getEditorGroup())
     this.updateVertexScales()
     this.noSelectionMessage.style.display = 'none'
+  }
+
+  /**
+   * Set a ghost sketch to display as a reference (non-interactive outline)
+   */
+  setGhostSketch(sketch: Sketch | null): void {
+    // Remove existing ghost group
+    if (this.ghostGroup) {
+      this.scene.remove(this.ghostGroup)
+      // Dispose all children
+      this.ghostGroup.traverse((child) => {
+        if (child instanceof THREE.Line || child instanceof THREE.Mesh) {
+          child.geometry.dispose()
+          if (child.material instanceof THREE.Material) {
+            child.material.dispose()
+          }
+        }
+      })
+      this.ghostGroup = null
+    }
+
+    if (!sketch) return
+
+    this.ghostGroup = new THREE.Group()
+
+    // Create ghost line from sketch vertices
+    const vertices = sketch.getVertices()
+    const points3d = vertices.map(v => new THREE.Vector3(v.x, v.y, -0.005))
+    points3d.push(points3d[0].clone()) // Close the loop
+
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points3d)
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: SKETCH.GHOST_LINE_COLOR,
+      transparent: true,
+      opacity: SKETCH.GHOST_LINE_OPACITY
+    })
+    const ghostLine = new THREE.Line(lineGeometry, lineMaterial)
+    this.ghostGroup.add(ghostLine)
+
+    // Create ghost vertices (same size as real vertices, but ghost color)
+    const vertexMaterial = new THREE.MeshBasicMaterial({
+      color: SKETCH.GHOST_LINE_COLOR,
+      transparent: true,
+      opacity: SKETCH.GHOST_LINE_OPACITY,
+      side: THREE.DoubleSide
+    })
+
+    // Calculate vertex scale (same as updateVertexScales)
+    const worldUnitsPerPixel = this.frustumSize / this.container.clientHeight
+    const vertexScale = SKETCH.VERTEX_SCREEN_PX * worldUnitsPerPixel
+
+    for (const v of vertices) {
+      const vertexGeometry = new THREE.PlaneGeometry(1, 1)
+      const vertexMesh = new THREE.Mesh(vertexGeometry, vertexMaterial.clone())
+      vertexMesh.position.set(v.x, v.y, -0.004) // Slightly in front of ghost line
+      vertexMesh.scale.set(vertexScale, vertexScale, 1)
+      this.ghostGroup.add(vertexMesh)
+    }
+
+    this.scene.add(this.ghostGroup)
+  }
+
+  /**
+   * Clear the ghost sketch
+   */
+  clearGhostSketch(): void {
+    this.setGhostSketch(null)
   }
 
   /**
@@ -669,6 +896,7 @@ export class SketchEditor {
       this.scene.remove(this.currentSketch.getEditorGroup())
       this.currentSketch = null
     }
+    this.clearGhostSketch()
     this.noSelectionMessage.style.display = 'flex'
   }
 

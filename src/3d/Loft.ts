@@ -113,16 +113,20 @@ export class Loft {
 
     if (model.segments.length === 0) return
 
-    // Collect all faces from all segments
+    // Collect all faces with their lock state
+    const facesWithLockState: { face: LoftFace; isLocked: boolean }[] = []
     const allFaces: LoftFace[] = []
     for (const segment of model.segments) {
-      allFaces.push(...segment.faces)
+      for (const face of segment.faces) {
+        facesWithLockState.push({ face, isLocked: segment.isLocked })
+        allFaces.push(face)
+      }
     }
 
     if (allFaces.length === 0) return
 
-    // Build wall geometry from faces
-    const wallGeometry = this.buildGeometryFromFaces(allFaces)
+    // Build wall geometry from faces (with vertex colors for locked segments)
+    const wallGeometry = this.buildGeometryFromFaces(facesWithLockState)
     if (!wallGeometry) return
 
     // Build roof geometry
@@ -138,6 +142,7 @@ export class Loft {
       polygonOffset: true,
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
+      vertexColors: true,  // Enable vertex colors for locked segment tinting
     })
     this.mesh = new THREE.Mesh(wallGeometry, material)
     this.group.add(this.mesh)
@@ -173,22 +178,35 @@ export class Loft {
   /**
    * Build geometry from faces (quads and triangles).
    * Quads are split into two triangles for rendering.
+   * Uses vertex colors to tint locked segments.
    */
-  private buildGeometryFromFaces(faces: LoftFace[]): THREE.BufferGeometry | null {
-    if (faces.length === 0) return null
+  private buildGeometryFromFaces(
+    facesWithState: { face: LoftFace; isLocked: boolean }[]
+  ): THREE.BufferGeometry | null {
+    if (facesWithState.length === 0) return null
 
     const positions: number[] = []
+    const colors: number[] = []
     const indices: number[] = []
 
-    for (const face of faces) {
+    // Get tint values for locked segments
+    const tint = LOFT.LOCKED_TINT
+
+    for (const { face, isLocked } of facesWithState) {
       const verts = face.vertices
       const baseIndex = positions.length / 3
+
+      // Determine vertex color (white for normal, tinted for locked)
+      const r = isLocked ? tint.r : 1.0
+      const g = isLocked ? tint.g : 1.0
+      const b = isLocked ? tint.b : 1.0
 
       // Add vertices (convert from our coordinate system to Three.js)
       // Our: x=right, y=forward, z=up
       // Three.js: x=right, y=up, z=-forward
       for (const v of verts) {
         positions.push(v.x, v.z, -v.y)
+        colors.push(r, g, b)
       }
 
       if (verts.length === 3) {
@@ -208,6 +226,7 @@ export class Loft {
 
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
     geometry.setIndex(indices)
     geometry.computeVertexNormals()
 
@@ -270,8 +289,10 @@ export class Loft {
     if (vertices.length < 3) return null
 
     const positions: number[] = []
+    const colors: number[] = []
     for (const v of vertices) {
       positions.push(v.x, height, -v.y)
+      colors.push(1, 1, 1)  // White vertex color (no tinting)
     }
 
     const roofTriangles = triangulatePolygon(vertices)
@@ -279,6 +300,7 @@ export class Loft {
 
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
     geometry.setIndex(roofTriangles)
     geometry.computeVertexNormals()
 

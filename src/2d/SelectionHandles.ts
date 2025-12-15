@@ -1,13 +1,14 @@
 import * as THREE from 'three'
 
-export type HandleType = 'none' | 'scale' | 'rotate'
+export type HandleType = 'none' | 'move' | 'scale' | 'rotate'
 
 /**
  * Visual handles for transforming selected vertices.
- * Shows a scale handle (center) and rotate handle (offset from center).
+ * Shows move (center), scale (left), and rotate (right) handles.
  */
 export class SelectionHandles {
   private group: THREE.Group
+  private moveHandle: THREE.Group
   private scaleHandle: THREE.Group
   private rotateHandle: THREE.Group
 
@@ -18,15 +19,90 @@ export class SelectionHandles {
     this.group = new THREE.Group()
     this.group.visible = false
 
-    // Create scale handle (up/down arrows in center)
+    // Create move handle (four-way arrows in center)
+    this.moveHandle = this.createMoveIcon()
+    this.moveHandle.userData.handleType = 'move'
+    this.group.add(this.moveHandle)
+
+    // Create scale handle (up/down arrows, offset to left)
     this.scaleHandle = this.createScaleIcon()
     this.scaleHandle.userData.handleType = 'scale'
     this.group.add(this.scaleHandle)
 
-    // Create rotate handle (curved arrow, offset from center)
+    // Create rotate handle (curved arrow, offset to right)
     this.rotateHandle = this.createRotateIcon()
     this.rotateHandle.userData.handleType = 'rotate'
     this.group.add(this.rotateHandle)
+  }
+
+  /**
+   * Create the move icon (four-way arrows)
+   */
+  private createMoveIcon(): THREE.Group {
+    const group = new THREE.Group()
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x44cc44,  // Green for move
+      side: THREE.DoubleSide
+    })
+
+    // Horizontal line
+    const hLineGeom = new THREE.PlaneGeometry(1.2, 0.15)
+    group.add(new THREE.Mesh(hLineGeom, material))
+
+    // Vertical line
+    const vLineGeom = new THREE.PlaneGeometry(0.15, 1.2)
+    group.add(new THREE.Mesh(vLineGeom, material))
+
+    // Right arrow head
+    const arrowRight = new THREE.BufferGeometry()
+    arrowRight.setAttribute('position', new THREE.Float32BufferAttribute([
+      0.6, 0, 0,
+      0.3, 0.25, 0,
+      0.3, -0.25, 0
+    ], 3))
+    arrowRight.setIndex([0, 1, 2])
+    group.add(new THREE.Mesh(arrowRight, material))
+
+    // Left arrow head
+    const arrowLeft = new THREE.BufferGeometry()
+    arrowLeft.setAttribute('position', new THREE.Float32BufferAttribute([
+      -0.6, 0, 0,
+      -0.3, 0.25, 0,
+      -0.3, -0.25, 0
+    ], 3))
+    arrowLeft.setIndex([0, 2, 1])
+    group.add(new THREE.Mesh(arrowLeft, material))
+
+    // Up arrow head
+    const arrowUp = new THREE.BufferGeometry()
+    arrowUp.setAttribute('position', new THREE.Float32BufferAttribute([
+      0, 0.6, 0,
+      -0.25, 0.3, 0,
+      0.25, 0.3, 0
+    ], 3))
+    arrowUp.setIndex([0, 1, 2])
+    group.add(new THREE.Mesh(arrowUp, material))
+
+    // Down arrow head
+    const arrowDown = new THREE.BufferGeometry()
+    arrowDown.setAttribute('position', new THREE.Float32BufferAttribute([
+      0, -0.6, 0,
+      -0.25, -0.3, 0,
+      0.25, -0.3, 0
+    ], 3))
+    arrowDown.setIndex([0, 2, 1])
+    group.add(new THREE.Mesh(arrowDown, material))
+
+    // Hit area (invisible larger box for easier clicking)
+    const hitArea = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.5, 1.5),
+      new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })
+    )
+    hitArea.userData.handleType = 'move'
+    group.add(hitArea)
+
+    group.position.z = 0.04
+    return group
   }
 
   /**
@@ -162,15 +238,20 @@ export class SelectionHandles {
       center: new THREE.Vector2((minX + maxX) / 2, (minY + maxY) / 2)
     }
 
-    // Position scale handle at center (2x size for visibility)
     const iconSize = this.handleSize * 2
-    this.scaleHandle.position.set(this.bounds.center.x, this.bounds.center.y, 0.04)
+    const boxWidth = maxX - minX
+    const offset = Math.max(boxWidth / 2 + iconSize * 1.5, iconSize * 2)
+
+    // Position move handle at center
+    this.moveHandle.position.set(this.bounds.center.x, this.bounds.center.y, 0.04)
+    this.moveHandle.scale.set(iconSize, iconSize, 1)
+
+    // Position scale handle outside the bounding box (to the left)
+    this.scaleHandle.position.set(this.bounds.center.x - offset, this.bounds.center.y, 0.04)
     this.scaleHandle.scale.set(iconSize, iconSize, 1)
 
     // Position rotate handle outside the bounding box (to the right)
-    const boxWidth = maxX - minX
-    const rotateOffset = Math.max(boxWidth / 2 + iconSize * 1.5, iconSize * 2)
-    this.rotateHandle.position.set(this.bounds.center.x + rotateOffset, this.bounds.center.y, 0.04)
+    this.rotateHandle.position.set(this.bounds.center.x + offset, this.bounds.center.y, 0.04)
     this.rotateHandle.scale.set(iconSize, iconSize, 1)
 
     this.group.visible = true
@@ -197,6 +278,9 @@ export class SelectionHandles {
   getHandleMeshes(): THREE.Object3D[] {
     const meshes: THREE.Object3D[] = []
     // Get all children that have handleType userData
+    this.moveHandle.traverse((child) => {
+      if (child.userData.handleType) meshes.push(child)
+    })
     this.scaleHandle.traverse((child) => {
       if (child.userData.handleType) meshes.push(child)
     })

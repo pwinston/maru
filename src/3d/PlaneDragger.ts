@@ -113,11 +113,17 @@ export class PlaneDragger {
   }
 
   /**
-   * End drag - delete plane if in delete state
+   * End drag - delete plane if in delete state.
+   * Returns the newly created plane (if shift-drag created one), or null.
    */
-  endDrag(): void {
+  endDrag(): SketchPlane | null {
+    let createdPlane: SketchPlane | null = null
+
     if (this.isDeletingPlane && this.draggedPlane) {
       this.deletePlane(this.draggedPlane)
+    } else if (this.isCreatingNewPlane && this.draggedPlane) {
+      // Return the newly created plane so caller can select it
+      createdPlane = this.draggedPlane
     }
 
     // Reset drag state
@@ -129,6 +135,8 @@ export class PlaneDragger {
     if (this.onOrbitEnabledChange) {
       this.onOrbitEnabledChange(true)
     }
+
+    return createdPlane
   }
 
   /**
