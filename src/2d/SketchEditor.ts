@@ -151,6 +151,39 @@ export class SketchEditor {
         this.updateSelectionHandles()
       }
     }
+
+    if ((event.key === 'Delete' || event.key === 'Backspace') && this.currentSketch) {
+      this.deleteSelectedVertices()
+    }
+  }
+
+  /**
+   * Delete selected vertices, keeping at least 3 vertices
+   */
+  private deleteSelectedVertices(): void {
+    if (!this.currentSketch || !this.onVertexDelete) return
+
+    const vertices = this.currentSketch.getVertices()
+    const selectedIndices = this.currentSketch.getSelectedIndices()
+    if (selectedIndices.length === 0) return
+
+    // Calculate how many we can delete (must keep at least 3)
+    const maxDeletions = Math.max(0, vertices.length - 3)
+    if (maxDeletions === 0) return
+
+    // Sort indices in descending order to delete from end first (avoids index shifting)
+    const indicesToDelete = [...selectedIndices]
+      .sort((a, b) => b - a)
+      .slice(0, maxDeletions)
+
+    // Delete each vertex
+    for (const index of indicesToDelete) {
+      this.onVertexDelete(index)
+    }
+
+    // Clear selection and update handles
+    this.currentSketch.clearSelection()
+    this.updateSelectionHandles()
   }
 
   /**
@@ -259,10 +292,12 @@ export class SketchEditor {
         // If clicking a selected vertex, prepare to drag all selected vertices
         if (this.currentSketch.isSelected(index)) {
           this.setupTransformTool(event)
+          this.selectionHandles.hide()
         } else {
           // Clicking unselected vertex clears selection and selects this vertex
           this.currentSketch.clearSelection()
           this.currentSketch.selectVertex(index)
+          this.selectionHandles.hide()
         }
       }
       return
@@ -271,6 +306,7 @@ export class SketchEditor {
     // Check if clicking on a segment to insert a vertex
     if (this.hoveredSegmentIndex !== null) {
       this.currentSketch.clearSelection()
+      this.selectionHandles.hide()
       this.tryInsertVertex(event)
       return
     }
