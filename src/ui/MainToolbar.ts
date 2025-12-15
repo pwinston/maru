@@ -117,4 +117,11 @@ export class MainToolbar {
   isRoofEnabled(): boolean {
     return this.toggleState.roof
   }
+
+  /**
+   * Check if planes toggle is enabled
+   */
+  isPlanesEnabled(): boolean {
+    return this.toggleState.planes
+  }
 }

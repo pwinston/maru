@@ -320,6 +320,12 @@ export class App {
         this.sketchEditor.clear()
         this.minimap.setSelectedPlane(-1)
       }
+      // When planes toggle is off, show only the selected plane
+      if (!this.mainToolbar.isPlanesEnabled()) {
+        this.model.planes.forEach(p => {
+          p.getGroup().visible = (p === plane)
+        })
+      }
       this.updateRoofVisibility()
       this.updateGhostSketch()
       this.sketchToolbar.clearActiveSides()
@@ -380,9 +386,15 @@ export class App {
 
     // Main toolbar callbacks
     this.mainToolbar.setOnPlanesChange((visible) => {
-      this.model.planes.forEach(plane => plane.getGroup().visible = visible)
-      if (!visible) {
-        this.planeSelector.deselectAll()
+      const selectedPlane = this.planeSelector.getSelectedPlane()
+      if (visible) {
+        // Show all planes
+        this.model.planes.forEach(plane => plane.getGroup().visible = true)
+      } else {
+        // Hide all planes except the selected one (if any)
+        this.model.planes.forEach(plane => {
+          plane.getGroup().visible = (plane === selectedPlane)
+        })
       }
       this.planeSelector.setEnabled(visible)
     })
@@ -469,7 +481,13 @@ export class App {
       // Planes are sorted by height (0 = bottom, higher = top)
       const sortedPlanes = [...this.model.planes].sort((a, b) => a.getHeight() - b.getHeight())
       if (planeIndex >= 0 && planeIndex < sortedPlanes.length) {
-        this.planeSelector.selectPlane(sortedPlanes[planeIndex])
+        const plane = sortedPlanes[planeIndex]
+        // Toggle: clicking already-selected plane deselects it
+        if (this.planeSelector.getSelectedPlane() === plane) {
+          this.planeSelector.deselectAll()
+        } else {
+          this.planeSelector.selectPlane(plane)
+        }
       }
     })
   }

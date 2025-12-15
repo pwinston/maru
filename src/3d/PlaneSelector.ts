@@ -71,10 +71,12 @@ export class PlaneSelector {
    * Track mouse down position and start dragging if on a plane
    */
   private handleMouseDown(event: MouseEvent): void {
-    if (!this.enabled) return
     if (event.button !== 0) return // Only left click
 
+    // Always track mouse down for potential deselection clicks
     this.mouseDownPos = { x: event.clientX, y: event.clientY }
+
+    if (!this.enabled) return
 
     // Check if clicking on a plane to start dragging
     const planeMeshes = this.model.planes.map((p: SketchPlane) => p.getPlaneMesh())
@@ -131,8 +133,6 @@ export class PlaneSelector {
    * Handle mouse up - detect clicks vs drags
    */
   private handleMouseUp(event: MouseEvent): void {
-    if (!this.enabled) return
-
     if (this.mouseDownPos && event.button === 0) {
       const dx = event.clientX - this.mouseDownPos.x
       const dy = event.clientY - this.mouseDownPos.y
@@ -141,8 +141,9 @@ export class PlaneSelector {
       if (distance < INTERACTION.CLICK_THRESHOLD_PX) {
         // Was a click, not a drag - cancel any pending drag
         this.dragger.cancelDrag()
+        // Handle click for deselection even when disabled
         this.handleClick(event)
-      } else {
+      } else if (this.enabled) {
         // Was a drag - end it (may delete if in delete state)
         const createdPlane = this.dragger.endDrag()
         // If a new plane was created via shift-drag, select it
@@ -162,14 +163,15 @@ export class PlaneSelector {
     const planeMeshes = this.model.planes.map((p: SketchPlane) => p.getPlaneMesh())
     const intersects = this.viewport3d.raycast(event, planeMeshes)
 
-    if (intersects.length > 0) {
+    if (intersects.length > 0 && this.enabled) {
+      // Only allow selecting planes when enabled
       const intersectedMesh = intersects[0].object
       const plane = this.model.planes.find((p: SketchPlane) => p.getPlaneMesh() === intersectedMesh)
       if (plane) {
         this.selectPlane(plane)
       }
-    } else {
-      // Clicked empty space - deselect
+    } else if (intersects.length === 0) {
+      // Clicked empty space - deselect (always allowed)
       this.deselectAll()
     }
   }
