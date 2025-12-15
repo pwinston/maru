@@ -365,6 +365,19 @@ export class App {
       }
     })
 
+    this.sketchEditor.setOnDrawComplete((vertices) => {
+      const selectedPlane = this.planeSelector.getSelectedPlane()
+      if (selectedPlane) {
+        selectedPlane.setVertices(vertices)
+        this.onSketchModified()
+      }
+      this.sketchToolbar.endDrawMode()
+    })
+
+    this.sketchEditor.setOnDrawCancel(() => {
+      this.sketchToolbar.endDrawMode()
+    })
+
     // Main toolbar callbacks
     this.mainToolbar.setOnPlanesChange((visible) => {
       this.model.planes.forEach(plane => plane.getGroup().visible = visible)
@@ -394,16 +407,28 @@ export class App {
     })
 
     this.sketchToolbar.setOnShapeSelect((sides) => {
+      // Cancel draw mode if active
+      if (this.sketchEditor.isDrawModeActive()) {
+        this.sketchEditor.cancelDrawMode()
+        this.sketchToolbar.endDrawMode()
+      }
+
       const selectedPlane = this.planeSelector.getSelectedPlane()
       if (selectedPlane) {
         const vertices = createRegularPolygon(sides, DEFAULT_BUILDING_SIZE)
         selectedPlane.setVertices(vertices)
+        // Re-set sketch in 2D editor to sync with new shape
+        this.sketchEditor.setSketch(selectedPlane.getSketch())
         this.rebuildLoft()
       }
     })
 
     this.sketchToolbar.setOnGhostChange(() => {
       this.updateGhostSketch()
+    })
+
+    this.sketchToolbar.setOnDrawStart(() => {
+      this.sketchEditor.startDrawMode()
     })
 
     // File menu callbacks

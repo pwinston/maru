@@ -5,6 +5,7 @@ import type { HandleType } from './SelectionHandles'
 import type { EditorTool } from './EditorTool'
 import { SweepSelection } from './SweepSelection'
 import { TransformTool } from './TransformTool'
+import { DrawTool } from './DrawTool'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
 import { createGrid } from '../util/GridHelper'
 import { GRID, VIEWPORT_2D, SKETCH } from '../constants'
@@ -51,6 +52,11 @@ export class SketchEditor {
 
   // Ghost sketch (reference outline from another plane)
   private ghostGroup: THREE.Group | null = null
+
+  // Draw mode state
+  private savedVerticesForRestore: THREE.Vector2[] | null = null
+  private onDrawComplete: ((vertices: THREE.Vector2[]) => void) | null = null
+  private onDrawCancel: (() => void) | null = null
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -190,6 +196,16 @@ export class SketchEditor {
    * Cancel all active operations and reset state
    */
   private cancelAllOperations(): void {
+    // Handle draw mode cancellation
+    if (this.activeTool instanceof DrawTool && this.savedVerticesForRestore) {
+      // Restore original sketch
+      if (this.currentSketch) {
+        this.currentSketch.getEditorGroup().visible = true
+      }
+      this.savedVerticesForRestore = null
+      this.onDrawCancel?.()
+    }
+
     // Clean up active tool
     if (this.activeTool) {
       this.activeTool.dispose()
@@ -252,6 +268,12 @@ export class SketchEditor {
       this.isPanning = true
       this.lastPanPosition = new THREE.Vector2(event.clientX, event.clientY)
       this.container.style.cursor = 'move'
+      return
+    }
+
+    // If draw tool is active, don't process normal interactions
+    // (DrawTool handles clicks via onMouseUp)
+    if (this.activeTool instanceof DrawTool) {
       return
     }
 
@@ -369,6 +391,15 @@ export class SketchEditor {
       )
     }
 
+    // Handle completed draw
+    if (result.drawnVertices) {
+      this.savedVerticesForRestore = null  // Clear restore state
+      if (this.currentSketch) {
+        this.currentSketch.getEditorGroup().visible = true
+      }
+      this.onDrawComplete?.(result.drawnVertices)
+    }
+
     // Clean up if tool is done
     if (result.done) {
       this.activeTool?.dispose()
@@ -440,6 +471,10 @@ export class SketchEditor {
     if (this.activeTool) {
       const result = this.activeTool.onMouseMove(this.getWorldPosition(event))
       this.applyToolResult(result)
+      // Maintain crosshair cursor during draw mode
+      if (this.activeTool instanceof DrawTool) {
+        this.container.style.cursor = 'crosshair'
+      }
       return
     }
 
@@ -708,6 +743,64 @@ export class SketchEditor {
    */
   setOnVertexDelete(callback: (index: number) => void): void {
     this.onVertexDelete = callback
+  }
+
+  /**
+   * Set callback for when draw mode completes
+   */
+  setOnDrawComplete(callback: (vertices: THREE.Vector2[]) => void): void {
+    this.onDrawComplete = callback
+  }
+
+  /**
+   * Set callback for when draw mode is cancelled
+   */
+  setOnDrawCancel(callback: () => void): void {
+    this.onDrawCancel = callback
+  }
+
+  /**
+   * Start draw mode - user clicks to place vertices
+   */
+  startDrawMode(): void {
+    if (!this.currentSketch) return
+
+    // Save current vertices for restore on cancel
+    this.savedVerticesForRestore = this.currentSketch.getVertices()
+
+    // Hide current sketch while drawing
+    this.currentSketch.getEditorGroup().visible = false
+
+    // Calculate vertex scale for the draw tool
+    const worldUnitsPerPixel = this.frustumSize / this.container.clientHeight
+    const vertexScale = SKETCH.VERTEX_SCREEN_PX * worldUnitsPerPixel
+
+    // Create and activate draw tool
+    this.activeTool = new DrawTool(this.scene, vertexScale)
+
+    // Set crosshair cursor for draw mode
+    this.container.style.cursor = 'crosshair'
+  }
+
+  /**
+   * Check if draw mode is active
+   */
+  isDrawModeActive(): boolean {
+    return this.activeTool instanceof DrawTool
+  }
+
+  /**
+   * Cancel draw mode without restoring (used when switching to preset shape)
+   */
+  cancelDrawMode(): void {
+    if (this.activeTool instanceof DrawTool) {
+      this.activeTool.dispose()
+      this.activeTool = null
+      this.savedVerticesForRestore = null
+      if (this.currentSketch) {
+        this.currentSketch.getEditorGroup().visible = true
+      }
+    }
   }
 
   /**

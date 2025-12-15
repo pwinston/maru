@@ -5,12 +5,14 @@
 export class SketchToolbar {
   private orientationElement: HTMLDivElement
   private ghostElement: HTMLDivElement
+  private drawElement: HTMLDivElement
   private shapeElement: HTMLDivElement
   private orientationMode: 'fixed' | 'rotate' = 'fixed'
   private ghostEnabled: boolean = false
 
   private onOrientationChange?: (mode: 'fixed' | 'rotate') => void
   private onGhostChange?: (enabled: boolean) => void
+  private onDrawStart?: () => void
   private onShapeSelect?: (sides: number) => void
 
   constructor(container: HTMLElement) {
@@ -30,6 +32,14 @@ export class SketchToolbar {
     container.appendChild(this.ghostElement)
 
     this.ghostElement.addEventListener('click', () => this.toggleGhost())
+
+    // Create draw button
+    this.drawElement = document.createElement('div')
+    this.drawElement.className = 'draw-toolbar'
+    this.drawElement.innerHTML = `<button data-draw="start">Draw</button>`
+    container.appendChild(this.drawElement)
+
+    this.drawElement.addEventListener('click', () => this.startDraw())
 
     // Create shape toolbar (right side)
     this.shapeElement = document.createElement('div')
@@ -108,6 +118,34 @@ export class SketchToolbar {
 
   setOnShapeSelect(callback: (sides: number) => void): void {
     this.onShapeSelect = callback
+  }
+
+  /**
+   * Start draw mode
+   */
+  private startDraw(): void {
+    const btn = this.drawElement.querySelector('button')
+    if (btn) {
+      btn.classList.add('active')
+    }
+    this.onDrawStart?.()
+  }
+
+  /**
+   * End draw mode (called when drawing completes or is cancelled)
+   */
+  endDrawMode(): void {
+    const btn = this.drawElement.querySelector('button')
+    if (btn) {
+      btn.classList.remove('active')
+    }
+  }
+
+  /**
+   * Set callback for when draw mode starts
+   */
+  setOnDrawStart(callback: () => void): void {
+    this.onDrawStart = callback
   }
 
   /**

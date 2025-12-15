@@ -8,6 +8,8 @@ export interface ToolResult {
   positions?: Map<number, THREE.Vector2>
   /** Vertices to select (for sweep selection). Rotation transforms world coords to screen-aligned coords. */
   selectInRect?: { min: THREE.Vector2; max: THREE.Vector2; rotation: number }
+  /** Complete polygon from draw mode */
+  drawnVertices?: THREE.Vector2[]
   /** Tool is finished and should be disposed */
   done?: boolean
 }
