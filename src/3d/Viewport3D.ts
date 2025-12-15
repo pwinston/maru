@@ -27,7 +27,7 @@ export class Viewport3D {
       VIEWPORT_3D.CAMERA_FOV,
       container.clientWidth / container.clientHeight,
       0.1,
-      1000
+      5000
     )
     this.camera.position.set(
       VIEWPORT_3D.CAMERA_POSITION.x,
