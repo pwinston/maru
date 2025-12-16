@@ -5,7 +5,7 @@ import { SketchPlane, type PlaneBounds } from './3d/SketchPlane'
 import { HelpPanel } from './util/HelpPanel'
 import { Loft } from './3d/Loft'
 import { DEFAULT_BUILDING_SIZE, VERSION } from './constants'
-import { LoftableModel } from './loft/LoftableModel'
+import { LoftGeometry } from './loft/LoftGeometry'
 import { MainToolbar } from './ui/MainToolbar'
 import { SketchToolbar } from './ui/SketchToolbar'
 import { createRegularPolygon } from './util/Geometry'
@@ -104,7 +104,7 @@ export class App {
    * Export loft debug data to console and download as JSON
    */
   private exportLoftDebugData(): void {
-    const model = LoftableModel.fromPlanes(this.model.planes)
+    const model = LoftGeometry.fromPlanes(this.model.planes)
     const debugData = model.exportDebugData()
 
     // Log to console
@@ -145,7 +145,7 @@ export class App {
    */
   private rebuildLoft(): void {
     this.syncPlaneSizes()
-    const loftModel = LoftableModel.fromModel(this.model)
+    const loftModel = LoftGeometry.fromModel(this.model)
     this.loft.rebuildFromModel(loftModel)
     this.minimap.setPlaneCount(this.model.planes.length)
 
@@ -154,7 +154,7 @@ export class App {
   }
 
   /** Current loft model, needed for capturing frozen segments */
-  private currentLoftModel: LoftableModel | null = null
+  private currentLoftModel: LoftGeometry | null = null
 
   /**
    * Called when a sketch is modified by the user (vertex moved, inserted, deleted)
@@ -478,7 +478,7 @@ export class App {
         // Locking: capture frozen segment data from current topology
         const segment = this.currentLoftModel.segments[segmentIndex]
         if (segment) {
-          const frozen = LoftableModel.freezeSegment(
+          const frozen = LoftGeometry.freezeSegment(
             segment.bottomPlane,
             segment.topPlane,
             segment.faces

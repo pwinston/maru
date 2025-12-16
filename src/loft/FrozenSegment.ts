@@ -4,6 +4,9 @@
  * Data structures for "frozen" (locked) segments.
  * When a segment is locked, we capture a snapshot of its topology
  * so that vertex connectivity stays fixed even as sketch positions change.
+ * 
+ * One application of this is to twist a sketch without the loft rebuilding
+ * out from under you.
  */
 
 import * as THREE from 'three'

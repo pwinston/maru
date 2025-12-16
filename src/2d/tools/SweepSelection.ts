@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { SKETCH } from '../constants'
+import { SKETCH } from '../../constants'
 import type { EditorTool, ToolResult } from './EditorTool'
 
 /**

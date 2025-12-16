@@ -79,23 +79,24 @@ src/
 ├── 2d/
 │   ├── Sketch.ts                # 2D polygon: vertices, lines, visual meshes
 │   ├── SketchEditor.ts          # 2D viewport with vertex editing
-│   ├── EditorTool.ts            # Interface for editor tools
-│   ├── DrawTool.ts              # Tool for drawing polygons vertex by vertex
-│   ├── SweepSelection.ts        # Rectangle sweep selection tool
-│   ├── TransformTool.ts         # Tool for translate/scale/rotate transforms
-│   ├── VertexTransform.ts       # Transform operations on vertex sets
-│   └── SelectionHandles.ts      # Visual handles for move/scale/rotate
+│   └── tools/
+│       ├── EditorTool.ts        # Interface for editor tools
+│       ├── DrawTool.ts          # Tool for drawing polygons vertex by vertex
+│       ├── SweepSelection.ts    # Rectangle sweep selection tool
+│       ├── TransformTool.ts     # Tool for translate/scale/rotate transforms
+│       ├── VertexTransform.ts   # Transform operations on vertex sets
+│       └── SelectionHandles.ts  # Visual handles for move/scale/rotate
 │
 ├── 3d/
 │   ├── Viewport3D.ts            # 3D scene with orbit controls and lighting
 │   ├── SketchPlane.ts           # Sketch positioned at a height in 3D
 │   ├── PlaneSelector.ts         # Hover/click plane selection
 │   ├── PlaneDragger.ts          # Drag to move/create/delete planes
-│   └── Loft.ts                  # Renders mesh faces from LoftableModel
+│   └── Loft.ts                  # Renders mesh faces from LoftGeometry
 │
 ├── loft/
 │   ├── LoftAlgorithm.ts         # Types for loft faces and results
-│   ├── LoftableModel.ts         # Model with segments containing mesh faces
+│   ├── LoftGeometry.ts          # Computed geometry with segments and faces
 │   ├── PerimeterWalkAlgorithm.ts # Perimeter-walk loft algorithm (see below)
 │   └── FrozenSegment.ts         # Frozen topology for locked segments
 │
@@ -118,7 +119,6 @@ src/
     ├── Geometry.test.ts         # Unit tests for Geometry
     ├── Bounds.ts                # 2D axis-aligned bounding box
     ├── GridHelper.ts            # Grid line rendering
-    ├── HelpBar.ts               # Legacy help bar (deprecated)
     └── HelpPanel.ts             # Keyboard shortcut help overlay
 ```
 

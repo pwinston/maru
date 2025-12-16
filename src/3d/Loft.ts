@@ -8,7 +8,7 @@
 import * as THREE from 'three'
 import { LOFT } from '../constants'
 import { triangulatePolygon } from '../util/Geometry'
-import { LoftableModel } from '../loft/LoftableModel'
+import { LoftGeometry } from '../loft/LoftGeometry'
 import type { LoftFace } from '../loft/LoftAlgorithm'
 
 export type WireframeMode = 'off' | 'on' | 'tris'
@@ -101,9 +101,9 @@ export class Loft {
   }
 
   /**
-   * Rebuild the loft from a LoftableModel.
+   * Rebuild the loft from a LoftGeometry.
    */
-  rebuildFromModel(model: LoftableModel): void {
+  rebuildFromModel(model: LoftGeometry): void {
     // Clear existing geometry
     this.group.clear()
     this.mesh = null

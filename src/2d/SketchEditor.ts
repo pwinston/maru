@@ -1,11 +1,11 @@
 import * as THREE from 'three'
 import { Sketch } from './Sketch'
-import { SelectionHandles } from './SelectionHandles'
-import type { HandleType } from './SelectionHandles'
-import type { EditorTool } from './EditorTool'
-import { SweepSelection } from './SweepSelection'
-import { TransformTool } from './TransformTool'
-import { DrawTool } from './DrawTool'
+import { SelectionHandles } from './tools/SelectionHandles'
+import type { HandleType } from './tools/SelectionHandles'
+import type { EditorTool } from './tools/EditorTool'
+import { SweepSelection } from './tools/SweepSelection'
+import { TransformTool } from './tools/TransformTool'
+import { DrawTool } from './tools/DrawTool'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
 import { createGrid } from '../util/GridHelper'
 import { GRID, VIEWPORT_2D, SKETCH } from '../constants'
@@ -385,7 +385,7 @@ export class SketchEditor {
   /**
    * Apply results from a tool operation
    */
-  private applyToolResult(result: import('./EditorTool').ToolResult): void {
+  private applyToolResult(result: import('./tools/EditorTool').ToolResult): void {
     if (!this.currentSketch) return
 
     // Apply position changes
