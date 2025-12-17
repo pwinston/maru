@@ -127,6 +127,13 @@ export class SketchPlane {
   }
 
   /**
+   * Set visibility of the sketch outline (lines showing the shape)
+   */
+  setSketchOutlineVisible(visible: boolean): void {
+    this.sketch.getLineGroup().visible = visible
+  }
+
+  /**
    * Get a copy of the 2D vertices of the sketch
    */
   getVertices(): THREE.Vector2[] {

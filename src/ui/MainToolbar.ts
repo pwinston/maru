@@ -124,4 +124,11 @@ export class MainToolbar {
   isPlanesEnabled(): boolean {
     return this.toggleState.planes
   }
+
+  /**
+   * Check if walls toggle is enabled
+   */
+  isWallsEnabled(): boolean {
+    return this.toggleState.walls
+  }
 }

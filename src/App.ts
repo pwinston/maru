@@ -418,6 +418,8 @@ export class App {
 
     this.mainToolbar.setOnWallsChange((visible) => {
       this.loft.setSolidVisible(visible)
+      // Hide sketch outlines when walls are visible
+      this.model.planes.forEach(plane => plane.setSketchOutlineVisible(!visible))
     })
 
     this.mainToolbar.setOnRoofChange(() => {
