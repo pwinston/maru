@@ -1,3 +1,33 @@
+const SIDE_OPTIONS = [3, 4, 5, 6, 7, 8, 10, 12, 16, 20, 100]
+
+/**
+ * Generate SVG path for a regular polygon
+ */
+function polygonPath(sides: number, size: number = 10): string {
+  const points: string[] = []
+  const cx = size
+  const cy = size
+  const r = size * 0.8
+  // Start from top (-90 degrees)
+  for (let i = 0; i < sides; i++) {
+    const angle = (i * 2 * Math.PI / sides) - Math.PI / 2
+    const x = cx + r * Math.cos(angle)
+    const y = cy + r * Math.sin(angle)
+    points.push(`${x.toFixed(1)},${y.toFixed(1)}`)
+  }
+  return `M${points.join('L')}Z`
+}
+
+/**
+ * Create an SVG element for a polygon
+ */
+function createPolygonSvg(sides: number, size: number = 20): string {
+  const displaySides = sides > 20 ? 24 : sides  // Cap visual sides for circle-like shapes
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <path d="${polygonPath(displaySides, size / 2)}" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  </svg>`
+}
+
 /**
  * Toolbar for the 2D sketch viewport.
  * Handles orientation mode (fixed/rotate), ghost toggle, and shape presets.
@@ -7,8 +37,13 @@ export class SketchToolbar {
   private ghostElement: HTMLDivElement
   private drawElement: HTMLDivElement
   private shapeElement: HTMLDivElement
+  private shapeButton: HTMLButtonElement
+  private shapeDropdown: HTMLDivElement
   private orientationMode: 'fixed' | 'rotate' = 'fixed'
   private ghostEnabled: boolean = false
+  private selectedSides: number | null = null
+  private dropdownOpen: boolean = false
+  private hasSketch: boolean = false
 
   private onOrientationChange?: (mode: 'fixed' | 'rotate') => void
   private onGhostChange?: (enabled: boolean) => void
@@ -41,28 +76,60 @@ export class SketchToolbar {
 
     this.drawElement.addEventListener('click', () => this.startDraw())
 
-    // Create shape toolbar (right side)
+    // Create shape dropdown (right side)
     this.shapeElement = document.createElement('div')
-    this.shapeElement.className = 'shape-toolbar'
-    this.shapeElement.innerHTML = `
-      <span class="toolbar-label">Sides</span>
-      <button data-sides="3">3</button>
-      <button data-sides="4">4</button>
-      <button data-sides="5">5</button>
-      <button data-sides="6">6</button>
-      <button data-sides="7">7</button>
-      <button data-sides="8">8</button>
-      <button data-sides="10">10</button>
-      <button data-sides="12">12</button>
-      <button data-sides="16">16</button>
-      <button data-sides="20">20</button>
-      <button data-sides="100">100</button>
-    `
+    this.shapeElement.className = 'shape-dropdown'
+
+    // Create trigger button
+    this.shapeButton = document.createElement('button')
+    this.shapeButton.className = 'shape-dropdown-trigger'
+    this.shapeButton.innerHTML = `<span class="shape-label">Sides</span><span class="dropdown-arrow">▼</span>`
+    this.shapeElement.appendChild(this.shapeButton)
+
+    // Create dropdown menu
+    this.shapeDropdown = document.createElement('div')
+    this.shapeDropdown.className = 'shape-dropdown-menu'
+    this.shapeDropdown.innerHTML = this.createShapeOptionsHtml()
+    this.shapeElement.appendChild(this.shapeDropdown)
+
     container.appendChild(this.shapeElement)
 
     // Event listeners
     this.orientationElement.addEventListener('click', (e) => this.handleOrientationClick(e))
-    this.shapeElement.addEventListener('click', (e) => this.handleShapeClick(e))
+    this.shapeButton.addEventListener('click', () => this.toggleDropdown())
+    this.shapeDropdown.addEventListener('click', (e) => this.handleShapeClick(e))
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!this.shapeElement.contains(e.target as Node)) {
+        this.closeDropdown()
+      }
+    })
+  }
+
+  private toggleDropdown(): void {
+    // Don't open dropdown if no sketch is selected
+    if (!this.hasSketch && !this.dropdownOpen) {
+      return
+    }
+    this.dropdownOpen = !this.dropdownOpen
+    this.shapeDropdown.classList.toggle('open', this.dropdownOpen)
+    this.shapeButton.classList.toggle('open', this.dropdownOpen)
+  }
+
+  private createShapeOptionsHtml(): string {
+    return SIDE_OPTIONS.map(sides =>
+      `<button data-sides="${sides}" class="shape-option">
+        ${createPolygonSvg(sides, 18)}
+        <span>${sides}</span>
+      </button>`
+    ).join('')
+  }
+
+  private closeDropdown(): void {
+    this.dropdownOpen = false
+    this.shapeDropdown.classList.remove('open')
+    this.shapeButton.classList.remove('open')
   }
 
   private handleOrientationClick(e: MouseEvent): void {
@@ -76,11 +143,12 @@ export class SketchToolbar {
   }
 
   private handleShapeClick(e: MouseEvent): void {
-    const target = e.target as HTMLElement
-    if (target.tagName !== 'BUTTON' || !target.dataset.sides) return
+    const target = (e.target as HTMLElement).closest('button') as HTMLElement | null
+    if (!target || !target.dataset.sides) return
 
     const sides = parseInt(target.dataset.sides, 10)
     this.setActiveSides(sides)
+    this.closeDropdown()
     this.onShapeSelect?.(sides)
   }
 
@@ -88,9 +156,16 @@ export class SketchToolbar {
    * Set the active sides button (or clear if null)
    */
   setActiveSides(sides: number | null): void {
-    this.shapeElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
+    this.selectedSides = sides
+    // Update dropdown item highlighting
+    this.shapeDropdown.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
     if (sides !== null) {
-      this.shapeElement.querySelector(`[data-sides="${sides}"]`)?.classList.add('active')
+      this.shapeDropdown.querySelector(`[data-sides="${sides}"]`)?.classList.add('active')
+      // Update trigger button to show polygon icon
+      this.shapeButton.innerHTML = `${createPolygonSvg(sides, 16)}<span class="dropdown-arrow">▼</span>`
+    } else {
+      // Reset to "Sides" label
+      this.shapeButton.innerHTML = `<span class="shape-label">Sides</span><span class="dropdown-arrow">▼</span>`
     }
   }
 
@@ -168,9 +243,40 @@ export class SketchToolbar {
   }
 
   /**
+   * Get currently selected sides (null if edited/custom)
+   */
+  getSelectedSides(): number | null {
+    return this.selectedSides
+  }
+
+  /**
    * Set callback for when ghost toggle changes
    */
   setOnGhostChange(callback: (enabled: boolean) => void): void {
     this.onGhostChange = callback
+  }
+
+  /**
+   * Set whether a sketch is currently selected
+   * Updates UI to show/hide shape options accordingly
+   */
+  setSketchSelected(hasSketch: boolean): void {
+    this.hasSketch = hasSketch
+
+    if (!hasSketch) {
+      // Close dropdown if open
+      this.closeDropdown()
+      // Show "no sketch" message
+      this.shapeDropdown.innerHTML = `<div class="no-sketch-message">No Sketch is selected</div>`
+      this.shapeButton.classList.add('disabled')
+    } else {
+      // Restore shape options
+      this.shapeDropdown.innerHTML = this.createShapeOptionsHtml()
+      this.shapeButton.classList.remove('disabled')
+      // Re-apply selected state if any
+      if (this.selectedSides !== null) {
+        this.shapeDropdown.querySelector(`[data-sides="${this.selectedSides}"]`)?.classList.add('active')
+      }
+    }
   }
 }

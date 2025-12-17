@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { EditorTool, ToolResult } from './EditorTool'
-import { SKETCH } from '../constants'
+import { SKETCH } from '../../constants'
 
 const CLOSE_THRESHOLD = 1.5  // Screen-space snap distance to first vertex (in vertex-scale units)
 const DRAW_LINE_COLOR = 0x99bb99  // Desaturated/whitish green during drawing

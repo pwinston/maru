@@ -5,7 +5,7 @@ import { SketchPlane, type PlaneBounds } from './3d/SketchPlane'
 import { HelpPanel } from './util/HelpPanel'
 import { Loft } from './3d/Loft'
 import { DEFAULT_BUILDING_SIZE, VERSION } from './constants'
-import { LoftableModel } from './loft/LoftableModel'
+import { LoftGeometry } from './loft/LoftGeometry'
 import { MainToolbar } from './ui/MainToolbar'
 import { SketchToolbar } from './ui/SketchToolbar'
 import { createRegularPolygon } from './util/Geometry'
@@ -104,7 +104,7 @@ export class App {
    * Export loft debug data to console and download as JSON
    */
   private exportLoftDebugData(): void {
-    const model = LoftableModel.fromPlanes(this.model.planes)
+    const model = LoftGeometry.fromPlanes(this.model.planes)
     const debugData = model.exportDebugData()
 
     // Log to console
@@ -145,7 +145,7 @@ export class App {
    */
   private rebuildLoft(): void {
     this.syncPlaneSizes()
-    const loftModel = LoftableModel.fromModel(this.model)
+    const loftModel = LoftGeometry.fromModel(this.model)
     this.loft.rebuildFromModel(loftModel)
     this.minimap.setPlaneCount(this.model.planes.length)
 
@@ -154,7 +154,7 @@ export class App {
   }
 
   /** Current loft model, needed for capturing frozen segments */
-  private currentLoftModel: LoftableModel | null = null
+  private currentLoftModel: LoftGeometry | null = null
 
   /**
    * Called when a sketch is modified by the user (vertex moved, inserted, deleted)
@@ -312,13 +312,21 @@ export class App {
     this.planeSelector.setOnSelectionChange((plane) => {
       if (plane) {
         this.sketchEditor.setSketch(plane.getSketch())
+        this.sketchToolbar.setSketchSelected(true)
         // Update minimap selection (planes sorted by height, 0 = bottom)
         const sortedPlanes = [...this.model.planes].sort((a, b) => a.getHeight() - b.getHeight())
         const planeIndex = sortedPlanes.indexOf(plane)
         this.minimap.setSelectedPlane(planeIndex)
       } else {
         this.sketchEditor.clear()
+        this.sketchToolbar.setSketchSelected(false)
         this.minimap.setSelectedPlane(-1)
+      }
+      // When planes toggle is off, show only the selected plane
+      if (!this.mainToolbar.isPlanesEnabled()) {
+        this.model.planes.forEach(p => {
+          p.getGroup().visible = (p === plane)
+        })
       }
       this.updateRoofVisibility()
       this.updateGhostSketch()
@@ -365,6 +373,21 @@ export class App {
       }
     })
 
+    this.sketchEditor.setOnPlaneDeleteRequest(() => {
+      const selectedPlane = this.planeSelector.getSelectedPlane()
+      if (selectedPlane) {
+        // Remove from scene
+        this.viewport3d.remove(selectedPlane.getGroup())
+        // Remove from model
+        this.model.removePlane(selectedPlane)
+        // Clear selection
+        this.planeSelector.deselectAll()
+        // Rebuild loft
+        this.rebuildLoft()
+        this.updateRoofVisibility()
+      }
+    })
+
     this.sketchEditor.setOnDrawComplete((vertices) => {
       const selectedPlane = this.planeSelector.getSelectedPlane()
       if (selectedPlane) {
@@ -380,15 +403,23 @@ export class App {
 
     // Main toolbar callbacks
     this.mainToolbar.setOnPlanesChange((visible) => {
-      this.model.planes.forEach(plane => plane.getGroup().visible = visible)
-      if (!visible) {
-        this.planeSelector.deselectAll()
+      const selectedPlane = this.planeSelector.getSelectedPlane()
+      if (visible) {
+        // Show all planes
+        this.model.planes.forEach(plane => plane.getGroup().visible = true)
+      } else {
+        // Hide all planes except the selected one (if any)
+        this.model.planes.forEach(plane => {
+          plane.getGroup().visible = (plane === selectedPlane)
+        })
       }
       this.planeSelector.setEnabled(visible)
     })
 
     this.mainToolbar.setOnWallsChange((visible) => {
       this.loft.setSolidVisible(visible)
+      // Hide sketch outlines when walls are visible
+      this.model.planes.forEach(plane => plane.setSketchOutlineVisible(!visible))
     })
 
     this.mainToolbar.setOnRoofChange(() => {
@@ -451,7 +482,7 @@ export class App {
         // Locking: capture frozen segment data from current topology
         const segment = this.currentLoftModel.segments[segmentIndex]
         if (segment) {
-          const frozen = LoftableModel.freezeSegment(
+          const frozen = LoftGeometry.freezeSegment(
             segment.bottomPlane,
             segment.topPlane,
             segment.faces
@@ -469,7 +500,13 @@ export class App {
       // Planes are sorted by height (0 = bottom, higher = top)
       const sortedPlanes = [...this.model.planes].sort((a, b) => a.getHeight() - b.getHeight())
       if (planeIndex >= 0 && planeIndex < sortedPlanes.length) {
-        this.planeSelector.selectPlane(sortedPlanes[planeIndex])
+        const plane = sortedPlanes[planeIndex]
+        // Toggle: clicking already-selected plane deselects it
+        if (this.planeSelector.getSelectedPlane() === plane) {
+          this.planeSelector.deselectAll()
+        } else {
+          this.planeSelector.selectPlane(plane)
+        }
       }
     })
   }

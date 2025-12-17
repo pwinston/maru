@@ -86,16 +86,36 @@ revert it. For this project I'm using branches like this:
 3. Scale and rotate using new on-screen `SelectionHandles` and helper `VertexTransform`
 ![](images/10.jpg)
 
-## File menu with Save/Load! ([PR #11](https://github.com/pwinston/maru/pull/11))    
-1. File menu with Save/Load options!
-2. Create App.ts as proper class instead of main.ts module vars.
+## Minimap, preparing for per-segment locking  ([PR #11](https://github.com/pwinston/maru/pull/11))    
+1. Minimap in 2D views shows very compact version of the N planes 
+2. Can click on a plane to edit it
+3. Toggleable "lock" checkbox for each segment, the interval between the two planes. 
+4. Locking does nothing yet, though, just getting this ready.
 ![](images/11.jpg)
 
-### Minimap and per-segment locking ([PR #12](https://github.com/pwinston/maru/pull/12))    
+## File menu with Save/Load! ([PR #12](https://github.com/pwinston/maru/pull/12))    
+1. File menu with Save/Load options!
+2. Create App.ts as proper class instead of main.ts module vars.
+![](images/12.jpg)
+
+## Minimap and per-segment locking ([PR #13](https://github.com/pwinston/maru/pull/13))    
 1. Minimap shows planes and per-segment locking status
 2. Per-segment locking works 
 3. Make all planes the size of the largest plane
 4. Version badge (make sure interacting with latest version)
 5. Some tweaks to perimeter walk
 6. Fix sweep select on rotated planes 
-![](images/12.jpg)
+![](images/13.jpg)
+
+## Ghost Sketch (show the sketch on plane below) ([PR #14](https://github.com/pwinston/maru/pull/14))    
+1. Optional ghost sketch of the plane below's sketch
+![](images/14.jpg)
+
+## New "draw tool" for making arbitrary sketches ([PR #15](https://github.com/pwinston/maru/pull/15))    
+1. New draw tool for make arbitrary sketches
+2. Auto-select the dragged plane after a draw
+3. New translate icon to mirror the scale/rotate ones
+4. Delete key deletes selected vertices
+5. Move back real-clip to view bigger models
+6. Several new models
+![](images/15.jpg)

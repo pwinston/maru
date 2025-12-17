@@ -1,11 +1,11 @@
 import * as THREE from 'three'
 import { Sketch } from './Sketch'
-import { SelectionHandles } from './SelectionHandles'
-import type { HandleType } from './SelectionHandles'
-import type { EditorTool } from './EditorTool'
-import { SweepSelection } from './SweepSelection'
-import { TransformTool } from './TransformTool'
-import { DrawTool } from './DrawTool'
+import { SelectionHandles } from './tools/SelectionHandles'
+import type { HandleType } from './tools/SelectionHandles'
+import type { EditorTool } from './tools/EditorTool'
+import { SweepSelection } from './tools/SweepSelection'
+import { TransformTool } from './tools/TransformTool'
+import { DrawTool } from './tools/DrawTool'
 import { wouldCauseSelfIntersection } from '../util/Geometry'
 import { createGrid } from '../util/GridHelper'
 import { GRID, VIEWPORT_2D, SKETCH } from '../constants'
@@ -31,6 +31,7 @@ export class SketchEditor {
   private hoveredSegmentIndex: number | null = null
   private onVertexInsert: ((segmentIndex: number, position: THREE.Vector2) => void) | null = null
   private onVertexDelete: ((index: number) => void) | null = null
+  private onPlaneDeleteRequest: (() => void) | null = null
 
   // Panning state
   private isPanning: boolean = false
@@ -158,8 +159,20 @@ export class SketchEditor {
       }
     }
 
-    if ((event.key === 'Delete' || event.key === 'Backspace') && this.currentSketch) {
-      this.deleteSelectedVertices()
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (this.currentSketch) {
+        const selectedIndices = this.currentSketch.getSelectedIndices()
+        if (selectedIndices.length > 0) {
+          // Delete selected vertices
+          this.deleteSelectedVertices()
+        } else {
+          // No vertices selected - request plane deletion
+          this.onPlaneDeleteRequest?.()
+        }
+      } else {
+        // No sketch loaded - might still want to delete the plane
+        this.onPlaneDeleteRequest?.()
+      }
     }
   }
 
@@ -372,7 +385,7 @@ export class SketchEditor {
   /**
    * Apply results from a tool operation
    */
-  private applyToolResult(result: import('./EditorTool').ToolResult): void {
+  private applyToolResult(result: import('./tools/EditorTool').ToolResult): void {
     if (!this.currentSketch) return
 
     // Apply position changes
@@ -746,6 +759,13 @@ export class SketchEditor {
   }
 
   /**
+   * Set callback for when plane deletion is requested (Delete key with no vertex selection)
+   */
+  setOnPlaneDeleteRequest(callback: () => void): void {
+    this.onPlaneDeleteRequest = callback
+  }
+
+  /**
    * Set callback for when draw mode completes
    */
   setOnDrawComplete(callback: (vertices: THREE.Vector2[]) => void): void {
@@ -897,6 +917,7 @@ export class SketchEditor {
       this.currentSketch = null
     }
     this.clearGhostSketch()
+    this.selectionHandles.hide()
     this.noSelectionMessage.style.display = 'flex'
   }
 

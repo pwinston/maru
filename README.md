@@ -71,35 +71,54 @@ at a 3D angle would be a lot harder without really adding much value.
 
 ```
 src/
-├── main.ts                      # App entry point, wires together viewports and event handlers
+├── main.ts                      # App entry point
+├── App.ts                       # Main application class, coordinates components
 ├── constants.ts                 # Configuration values (colors, sizes, thresholds)
+├── style.css                    # Application styles
 │
 ├── 2d/
 │   ├── Sketch.ts                # 2D polygon: vertices, lines, visual meshes
-│   └── SketchEditor.ts          # 2D viewport with vertex drag/insert/delete
+│   ├── SketchEditor.ts          # 2D viewport with vertex editing
+│   └── tools/
+│       ├── EditorTool.ts        # Interface for editor tools
+│       ├── DrawTool.ts          # Tool for drawing polygons vertex by vertex
+│       ├── SweepSelection.ts    # Rectangle sweep selection tool
+│       ├── TransformTool.ts     # Tool for translate/scale/rotate transforms
+│       ├── VertexTransform.ts   # Transform operations on vertex sets
+│       └── SelectionHandles.ts  # Visual handles for move/scale/rotate
 │
 ├── 3d/
 │   ├── Viewport3D.ts            # 3D scene with orbit controls and lighting
 │   ├── SketchPlane.ts           # Sketch positioned at a height in 3D
 │   ├── PlaneSelector.ts         # Hover/click plane selection
 │   ├── PlaneDragger.ts          # Drag to move/create/delete planes
-│   └── Loft.ts                  # Renders mesh faces (quads/triangles) from LoftableModel
+│   └── Loft.ts                  # Renders mesh faces from LoftGeometry
 │
 ├── loft/
 │   ├── LoftAlgorithm.ts         # Types for loft faces and results
-│   ├── LoftableModel.ts         # Model with segments containing mesh faces
-│   └── PerimeterWalkAlgorithm.ts # Perimeter-walk loft algorithm (see below)
+│   ├── LoftGeometry.ts          # Computed geometry with segments and faces
+│   ├── PerimeterWalkAlgorithm.ts # Perimeter-walk loft algorithm (see below)
+│   └── FrozenSegment.ts         # Frozen topology for locked segments
+│
+├── model/
+│   └── Model.ts                 # Central data structure for lofted shapes
+│
+├── storage/
+│   ├── BuildingTypes.ts         # TypeScript types for building serialization
+│   ├── BuildingSerializer.ts    # Serializes Model to/from BuildingData
+│   └── BuildingStorage.ts       # Client API for saving/loading buildings
 │
 ├── ui/
 │   ├── MainToolbar.ts           # 3D viewport toolbar (planes, walls, roof, wireframe)
-│   └── SketchToolbar.ts         # 2D viewport toolbar (orientation, shape presets)
+│   ├── SketchToolbar.ts         # 2D viewport toolbar (orientation, shape presets)
+│   ├── FileMenu.ts              # File menu for save/load/new operations
+│   └── Minimap.ts               # Building structure overview with lock toggles
 │
 └── util/
     ├── Geometry.ts              # Polygon math (area, winding, triangulation, intersection)
     ├── Geometry.test.ts         # Unit tests for Geometry
     ├── Bounds.ts                # 2D axis-aligned bounding box
     ├── GridHelper.ts            # Grid line rendering
-    ├── HelpBar.ts               # Legacy help bar (deprecated)
     └── HelpPanel.ts             # Keyboard shortcut help overlay
 ```
 

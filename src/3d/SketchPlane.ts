@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { Sketch } from '../2d/Sketch'
 import { PLANE } from '../constants'
 
-export type PlaneVisualState = 'default' | 'hovered' | 'selected' | 'deleting'
+export type PlaneVisualState = 'default' | 'hovered' | 'selected' | 'deleting' | 'dimmed'
 
 /**
  * Represents a 2D sketch plane in 3D space.
@@ -124,6 +124,13 @@ export class SketchPlane {
    */
   getSketch(): Sketch {
     return this.sketch
+  }
+
+  /**
+   * Set visibility of the sketch outline (lines showing the shape)
+   */
+  setSketchOutlineVisible(visible: boolean): void {
+    this.sketch.getLineGroup().visible = visible
   }
 
   /**

@@ -1,8 +1,9 @@
 /**
- * LoftableModel.ts
+ * LoftGeometry.ts
  *
- * Represents a lofted shape as a collection of segments,
+ * Computed geometry for a lofted shape, organized as segments
  * where each segment contains the mesh faces connecting two planes.
+ * Ephemeral - rebuilt on every model change.
  */
 
 import * as THREE from 'three'
@@ -54,9 +55,9 @@ export class LoftSegment {
 }
 
 /**
- * A loftable model consisting of segments between adjacent planes.
+ * Computed loft geometry consisting of segments between adjacent planes.
  */
-export class LoftableModel {
+export class LoftGeometry {
   segments: LoftSegment[]
 
   constructor(segments: LoftSegment[]) {
@@ -64,12 +65,12 @@ export class LoftableModel {
   }
 
   /**
-   * Create a LoftableModel from an array of sketch planes.
+   * Create a LoftGeometry from an array of sketch planes.
    * Always rebuilds all segments (ignores lock states).
    */
-  static fromPlanes(planes: SketchPlane[]): LoftableModel {
+  static fromPlanes(planes: SketchPlane[]): LoftGeometry {
     if (planes.length < 2) {
-      return new LoftableModel([])
+      return new LoftGeometry([])
     }
 
     // Sort planes by height
@@ -91,11 +92,11 @@ export class LoftableModel {
       segments.push(new LoftSegment(bottomPlane, topPlane, result.faces))
     }
 
-    return new LoftableModel(segments)
+    return new LoftGeometry(segments)
   }
 
   /**
-   * Create a LoftableModel from a Model, respecting lock states.
+   * Create a LoftGeometry from a Model, respecting lock states.
    *
    * For locked segments with frozen data:
    * - Uses the frozen topology (face connectivity stays fixed)
@@ -104,9 +105,9 @@ export class LoftableModel {
    * For unlocked segments:
    * - Rebuilds using perimeterWalkAlgorithm (topology may change)
    */
-  static fromModel(model: Model): LoftableModel {
+  static fromModel(model: Model): LoftGeometry {
     if (model.planes.length < 2) {
-      return new LoftableModel([])
+      return new LoftGeometry([])
     }
 
     // Sort planes by height
@@ -148,7 +149,7 @@ export class LoftableModel {
       segments.push(new LoftSegment(bottomPlane, topPlane, faces, isLocked))
     }
 
-    return new LoftableModel(segments)
+    return new LoftGeometry(segments)
   }
 
   /**

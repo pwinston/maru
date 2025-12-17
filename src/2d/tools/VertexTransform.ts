@@ -9,6 +9,7 @@ export class VertexTransform {
   private center: THREE.Vector2
   private startMouse: THREE.Vector2
   private startAngle: number
+  private selectionRadius: number
 
   constructor(
     vertices: THREE.Vector2[],
@@ -38,6 +39,8 @@ export class VertexTransform {
       mousePos.y - this.center.y,
       mousePos.x - this.center.x
     )
+    // Half the diagonal of bounding box - used to normalize scale sensitivity
+    this.selectionRadius = Math.sqrt((maxX - minX) ** 2 + (maxY - minY) ** 2) / 2
   }
 
   /**
@@ -74,14 +77,19 @@ export class VertexTransform {
   }
 
   /**
-   * Calculate scaled positions based on vertical mouse movement
-   * Moving up = scale up, moving down = scale down
+   * Calculate scaled positions based on vertical mouse movement.
+   * Moving up = scale up, moving down = scale down.
+   * Delta is normalized by selection size for zoom-independent behavior.
    */
   scale(currentMouse: THREE.Vector2): Map<number, THREE.Vector2> {
     const deltaY = currentMouse.y - this.startMouse.y
 
-    // 1 unit up = 10% bigger
-    const scaleFactor = Math.max(0.1, 1 + deltaY * 0.1)
+    // Normalize delta by selection size so scaling feels consistent at any zoom
+    // Moving up by the selection's radius = 2x scale
+    const normalizedDelta = this.selectionRadius > 0
+      ? deltaY / this.selectionRadius
+      : deltaY
+    const scaleFactor = Math.max(0.1, 1 + normalizedDelta)
 
     const result = new Map<number, THREE.Vector2>()
     for (const [index, startPos] of this.startPositions) {

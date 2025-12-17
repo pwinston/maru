@@ -91,6 +91,7 @@ button {
   background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
+  caret-color: transparent;
 }
 button:hover {
   border-color: #646cff;
@@ -360,51 +361,125 @@ button:focus-visible {
   border-color: rgba(68, 204, 68, 0.8);
 }
 
-/* Shape toolbar (2D viewport) */
-.shape-toolbar {
+/* Shape dropdown (2D viewport) */
+.shape-dropdown {
   position: absolute;
   top: 8px;
   right: 8px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 100;
 }
 
-.shape-toolbar .toolbar-label {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-right: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.shape-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 11px;
 }
 
-.shape-toolbar button {
-  padding: 4px 8px;
-  font-size: 11px;
-  min-width: 28px;
-  background: rgba(255, 255, 255, 0.1);
+.shape-dropdown-trigger:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.shape-dropdown-trigger.open {
+  border-color: rgba(68, 136, 204, 0.6);
+}
+
+.shape-dropdown-trigger .shape-label {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.shape-dropdown-trigger .dropdown-arrow {
+  font-size: 8px;
+  opacity: 0.5;
+  transition: transform 0.15s;
+}
+
+.shape-dropdown-trigger.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.shape-dropdown-trigger svg {
+  display: block;
+}
+
+.shape-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  display: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  width: 180px;
+}
+
+.shape-dropdown-menu.open {
+  display: flex;
+}
+
+.shape-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  min-width: 36px;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid transparent;
   border-radius: 4px;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   transition: all 0.15s;
+  font-size: 10px;
 }
 
-.shape-toolbar button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.shape-toolbar button.active {
-  background: rgba(68, 136, 204, 0.6);
+.shape-option:hover {
+  background: rgba(255, 255, 255, 0.15);
   color: white;
+}
+
+.shape-option.active {
+  background: rgba(68, 136, 204, 0.5);
   border-color: rgba(68, 136, 204, 0.8);
+  color: white;
+}
+
+.shape-option svg {
+  display: block;
+}
+
+.shape-dropdown-trigger.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shape-dropdown-trigger.disabled:hover {
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.no-sketch-message {
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* No selection message (2D viewport) */

@@ -59,11 +59,14 @@ export class PlaneSelector {
    */
   setEnabled(enabled: boolean): void {
     this.enabled = enabled
-    // Clear hover state when disabled
+    // Clear hover state and restore all planes when disabled
     if (!enabled && this.hoveredPlane) {
-      const state = this.hoveredPlane === this.selectedPlane ? 'selected' : 'default'
-      this.hoveredPlane.setVisualState(state)
       this.hoveredPlane = null
+      // Restore all planes to normal states
+      for (const plane of this.model.planes) {
+        const state = plane === this.selectedPlane ? 'selected' : 'default'
+        plane.setVisualState(state)
+      }
     }
   }
 
@@ -71,10 +74,12 @@ export class PlaneSelector {
    * Track mouse down position and start dragging if on a plane
    */
   private handleMouseDown(event: MouseEvent): void {
-    if (!this.enabled) return
     if (event.button !== 0) return // Only left click
 
+    // Always track mouse down for potential deselection clicks
     this.mouseDownPos = { x: event.clientX, y: event.clientY }
+
+    if (!this.enabled) return
 
     // Check if clicking on a plane to start dragging
     const planeMeshes = this.model.planes.map((p: SketchPlane) => p.getPlaneMesh())
@@ -108,21 +113,38 @@ export class PlaneSelector {
     const planeMeshes = this.model.planes.map((p: SketchPlane) => p.getPlaneMesh())
     const intersects = this.viewport3d.raycast(event, planeMeshes)
 
-    // Clear previous hover
-    if (this.hoveredPlane) {
-      // Restore to selected or default based on current selection
-      const state = this.hoveredPlane === this.selectedPlane ? 'selected' : 'default'
-      this.hoveredPlane.setVisualState(state)
-    }
+    const previousHover = this.hoveredPlane
     this.hoveredPlane = null
 
-    // Highlight hovered plane (including selected plane for "alive" feel)
+    // Find the new hovered plane
     if (intersects.length > 0) {
       const intersectedMesh = intersects[0].object
       const plane = this.model.planes.find((p: SketchPlane) => p.getPlaneMesh() === intersectedMesh)
       if (plane) {
-        plane.setVisualState('hovered')
         this.hoveredPlane = plane
+      }
+    }
+
+    // Update visual states if hover changed
+    if (this.hoveredPlane !== previousHover) {
+      if (this.hoveredPlane) {
+        // Hovering a plane: dim all others, highlight hovered
+        for (const plane of this.model.planes) {
+          if (plane === this.hoveredPlane) {
+            plane.setVisualState('hovered')
+          } else if (plane === this.selectedPlane) {
+            // Keep selected plane visible but dimmed
+            plane.setVisualState('selected')
+          } else {
+            plane.setVisualState('dimmed')
+          }
+        }
+      } else {
+        // Not hovering any plane: restore all to normal states
+        for (const plane of this.model.planes) {
+          const state = plane === this.selectedPlane ? 'selected' : 'default'
+          plane.setVisualState(state)
+        }
       }
     }
   }
@@ -131,8 +153,6 @@ export class PlaneSelector {
    * Handle mouse up - detect clicks vs drags
    */
   private handleMouseUp(event: MouseEvent): void {
-    if (!this.enabled) return
-
     if (this.mouseDownPos && event.button === 0) {
       const dx = event.clientX - this.mouseDownPos.x
       const dy = event.clientY - this.mouseDownPos.y
@@ -141,8 +161,9 @@ export class PlaneSelector {
       if (distance < INTERACTION.CLICK_THRESHOLD_PX) {
         // Was a click, not a drag - cancel any pending drag
         this.dragger.cancelDrag()
+        // Handle click for deselection even when disabled
         this.handleClick(event)
-      } else {
+      } else if (this.enabled) {
         // Was a drag - end it (may delete if in delete state)
         const createdPlane = this.dragger.endDrag()
         // If a new plane was created via shift-drag, select it
@@ -162,14 +183,15 @@ export class PlaneSelector {
     const planeMeshes = this.model.planes.map((p: SketchPlane) => p.getPlaneMesh())
     const intersects = this.viewport3d.raycast(event, planeMeshes)
 
-    if (intersects.length > 0) {
+    if (intersects.length > 0 && this.enabled) {
+      // Only allow selecting planes when enabled
       const intersectedMesh = intersects[0].object
       const plane = this.model.planes.find((p: SketchPlane) => p.getPlaneMesh() === intersectedMesh)
       if (plane) {
         this.selectPlane(plane)
       }
-    } else {
-      // Clicked empty space - deselect
+    } else if (intersects.length === 0) {
+      // Clicked empty space - deselect (always allowed)
       this.deselectAll()
     }
   }

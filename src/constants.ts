@@ -1,5 +1,5 @@
 // App version (increment to verify code changes are live)
-export const VERSION = 9
+export const VERSION = 23
 
 // Grid configuration
 export const GRID = {
@@ -12,7 +12,7 @@ export const GRID = {
 }
 
 // Default building dimensions
-export const DEFAULT_BUILDING_SIZE = 20  // 20m x 20m default building
+export const DEFAULT_BUILDING_SIZE = 10  // 10m x 10m default building
 
 // 3D viewport configuration
 export const VIEWPORT_3D = {
@@ -62,6 +62,7 @@ export const PLANE = {
     hovered:  { color: 0x998866, opacity: 0.3 },
     selected: { color: 0xffcc00, opacity: 0.4 },
     deleting: { color: 0xff0000, opacity: 0.5 },
+    dimmed:   { color: 0x333333, opacity: 0.15 },
   },
 }
 
