@@ -43,6 +43,7 @@ export class SketchToolbar {
   private ghostEnabled: boolean = false
   private selectedSides: number | null = null
   private dropdownOpen: boolean = false
+  private hasSketch: boolean = false
 
   private onOrientationChange?: (mode: 'fixed' | 'rotate') => void
   private onGhostChange?: (enabled: boolean) => void
@@ -88,12 +89,7 @@ export class SketchToolbar {
     // Create dropdown menu
     this.shapeDropdown = document.createElement('div')
     this.shapeDropdown.className = 'shape-dropdown-menu'
-    this.shapeDropdown.innerHTML = SIDE_OPTIONS.map(sides =>
-      `<button data-sides="${sides}" class="shape-option">
-        ${createPolygonSvg(sides, 18)}
-        <span>${sides}</span>
-      </button>`
-    ).join('')
+    this.shapeDropdown.innerHTML = this.createShapeOptionsHtml()
     this.shapeElement.appendChild(this.shapeDropdown)
 
     container.appendChild(this.shapeElement)
@@ -112,9 +108,22 @@ export class SketchToolbar {
   }
 
   private toggleDropdown(): void {
+    // Don't open dropdown if no sketch is selected
+    if (!this.hasSketch && !this.dropdownOpen) {
+      return
+    }
     this.dropdownOpen = !this.dropdownOpen
     this.shapeDropdown.classList.toggle('open', this.dropdownOpen)
     this.shapeButton.classList.toggle('open', this.dropdownOpen)
+  }
+
+  private createShapeOptionsHtml(): string {
+    return SIDE_OPTIONS.map(sides =>
+      `<button data-sides="${sides}" class="shape-option">
+        ${createPolygonSvg(sides, 18)}
+        <span>${sides}</span>
+      </button>`
+    ).join('')
   }
 
   private closeDropdown(): void {
@@ -245,5 +254,29 @@ export class SketchToolbar {
    */
   setOnGhostChange(callback: (enabled: boolean) => void): void {
     this.onGhostChange = callback
+  }
+
+  /**
+   * Set whether a sketch is currently selected
+   * Updates UI to show/hide shape options accordingly
+   */
+  setSketchSelected(hasSketch: boolean): void {
+    this.hasSketch = hasSketch
+
+    if (!hasSketch) {
+      // Close dropdown if open
+      this.closeDropdown()
+      // Show "no sketch" message
+      this.shapeDropdown.innerHTML = `<div class="no-sketch-message">No Sketch is selected</div>`
+      this.shapeButton.classList.add('disabled')
+    } else {
+      // Restore shape options
+      this.shapeDropdown.innerHTML = this.createShapeOptionsHtml()
+      this.shapeButton.classList.remove('disabled')
+      // Re-apply selected state if any
+      if (this.selectedSides !== null) {
+        this.shapeDropdown.querySelector(`[data-sides="${this.selectedSides}"]`)?.classList.add('active')
+      }
+    }
   }
 }

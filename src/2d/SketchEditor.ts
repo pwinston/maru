@@ -917,6 +917,7 @@ export class SketchEditor {
       this.currentSketch = null
     }
     this.clearGhostSketch()
+    this.selectionHandles.hide()
     this.noSelectionMessage.style.display = 'flex'
   }
 

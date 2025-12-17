@@ -312,12 +312,14 @@ export class App {
     this.planeSelector.setOnSelectionChange((plane) => {
       if (plane) {
         this.sketchEditor.setSketch(plane.getSketch())
+        this.sketchToolbar.setSketchSelected(true)
         // Update minimap selection (planes sorted by height, 0 = bottom)
         const sortedPlanes = [...this.model.planes].sort((a, b) => a.getHeight() - b.getHeight())
         const planeIndex = sortedPlanes.indexOf(plane)
         this.minimap.setSelectedPlane(planeIndex)
       } else {
         this.sketchEditor.clear()
+        this.sketchToolbar.setSketchSelected(false)
         this.minimap.setSelectedPlane(-1)
       }
       // When planes toggle is off, show only the selected plane

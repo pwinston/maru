@@ -464,6 +464,24 @@ button:focus-visible {
   display: block;
 }
 
+.shape-dropdown-trigger.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shape-dropdown-trigger.disabled:hover {
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.no-sketch-message {
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+}
+
 /* No selection message (2D viewport) */
 .no-selection-message {
   position: absolute;
