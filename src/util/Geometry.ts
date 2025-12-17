@@ -7,23 +7,42 @@ import * as THREE from 'three'
 /**
  * Create a regular polygon with the given number of sides.
  * @param sides Number of sides (3 = triangle, 4 = square, etc.)
- * @param size Width/height of the bounding box
+ * @param size Target bounding box size (width and height will match this)
  * @returns Array of vertices in CCW order, centered at origin
  */
 export function createRegularPolygon(sides: number, size: number): THREE.Vector2[] {
   if (sides < 3) sides = 3
   const vertices: THREE.Vector2[] = []
-  const radius = size / 2
 
   // Start angle: π/2 puts first vertex at top
   // Offset by π/sides for even-sided polygons to get flat bottom
   const startAngle = Math.PI / 2 + (sides % 2 === 0 ? Math.PI / sides : 0)
 
+  // First pass: generate at unit radius to find bounding box
+  let minX = Infinity, maxX = -Infinity
+  let minY = Infinity, maxY = -Infinity
+
+  for (let i = 0; i < sides; i++) {
+    const angle = startAngle + (i * 2 * Math.PI) / sides
+    const x = Math.cos(angle)
+    const y = Math.sin(angle)
+    minX = Math.min(minX, x)
+    maxX = Math.max(maxX, x)
+    minY = Math.min(minY, y)
+    maxY = Math.max(maxY, y)
+  }
+
+  // Scale factor to achieve desired bounding box size
+  const bboxWidth = maxX - minX
+  const bboxHeight = maxY - minY
+  const scale = size / Math.max(bboxWidth, bboxHeight)
+
+  // Second pass: generate scaled vertices
   for (let i = 0; i < sides; i++) {
     const angle = startAngle + (i * 2 * Math.PI) / sides
     vertices.push(new THREE.Vector2(
-      radius * Math.cos(angle),
-      radius * Math.sin(angle)
+      scale * Math.cos(angle),
+      scale * Math.sin(angle)
     ))
   }
 

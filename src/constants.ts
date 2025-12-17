@@ -12,7 +12,7 @@ export const GRID = {
 }
 
 // Default building dimensions
-export const DEFAULT_BUILDING_SIZE = 20  // 20m x 20m default building
+export const DEFAULT_BUILDING_SIZE = 10  // 10m x 10m default building
 
 // 3D viewport configuration
 export const VIEWPORT_3D = {
