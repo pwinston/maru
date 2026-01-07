@@ -1,4 +1,4 @@
-# Maru
+# Loft Demo
 
 CAD-like tool to create, visualize and interactively edit "lofted" shapes in three.js.
 
